@@ -43,6 +43,32 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
         let root = tree::insert(&self.root, value, &self.cmp);
         Set { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
     }
+
+    pub fn delete_min(&self) -> Option<(Set<V, C>, &V)>
+    {
+        if let Some(ref root) = self.root {
+            let (new_root, v) = tree::delete_min(&root);
+            Some((
+                Set { root: new_root, cmp: self.cmp.clone() },
+                v
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub fn delete_max(&self) -> Option<(Set<V, C>, &V)>
+    {
+        if let Some(ref root) = self.root {
+            let (new_root, v) = tree::delete_max(&root);
+            Some((
+                Set { root: new_root, cmp: self.cmp.clone() },
+                v
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 impl<V: Ord> Set<V> {
@@ -83,5 +109,41 @@ mod test {
         assert_eq!(10, r10.len());
         assert!(balanced(&r10.root));
         assert!(r10.contains(&(12, 'l')));
+    }
+
+    #[test]
+    fn test_delete_min() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let (r7, v) = r6.delete_min().unwrap();
+
+        let mut res = Vec::new();
+        let expected = vec![4, 5, 7, 12, 15];
+        traverse(&r7.root, &mut res);
+        assert_eq!(expected, res);
+        assert_eq!(&3, v);
+    }
+
+    #[test]
+    fn test_delete_max() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let (r7, v) = r6.delete_max().unwrap();
+
+        let mut res = Vec::new();
+        let expected = vec![3, 4, 5, 7, 12];
+        traverse(&r7.root, &mut res);
+        assert_eq!(expected, res);
+        assert_eq!(&15, v);
     }
 }

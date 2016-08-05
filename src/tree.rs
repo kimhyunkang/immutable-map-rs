@@ -6,6 +6,7 @@ use compare::Compare;
 static DELTA: usize = 3;
 static GAMMA: usize = 2;
 
+#[derive(Clone)]
 pub struct TreeNode<V> {
     size: usize,
     elem: V,
@@ -38,6 +39,42 @@ pub fn find_exact<V, F>(node: &Option<Rc<TreeNode<V>>>, mut f: F) -> Option<&V>
                 Ordering::Equal => return Some(&n.elem),
                 Ordering::Greater => cursor = &n.right,
             }
+        }
+    }
+}
+
+pub fn delete_min<V>(node: &TreeNode<V>) -> (Option<Rc<TreeNode<V>>>, &V)
+    where V: Clone
+{
+    match node.left {
+        None => (node.right.clone(), &node.elem),
+        Some(ref l) => {
+            let (new_left, v) = delete_min(l);
+            let new_node = match node.right {
+                None =>
+                    TreeNode::new(node.elem.clone(), new_left, None),
+                Some(ref r) =>
+                    balance_left(node.elem.clone(), &new_left, (**r).clone())
+            };
+            (Some(Rc::new(new_node)), v)
+        }
+    }
+}
+
+pub fn delete_max<V>(node: &TreeNode<V>) -> (Option<Rc<TreeNode<V>>>, &V)
+    where V: Clone
+{
+    match node.right {
+        None => (node.left.clone(), &node.elem),
+        Some(ref r) => {
+            let (new_right, v) = delete_max(r);
+            let new_node = match node.left {
+                None =>
+                    TreeNode::new(node.elem.clone(), None, new_right),
+                Some(ref l) =>
+                    balance_right(node.elem.clone(), (**l).clone(), &new_right)
+            };
+            (Some(Rc::new(new_node)), v)
         }
     }
 }
