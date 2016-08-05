@@ -1,56 +1,16 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use compare::{Compare, Natural, natural};
+use compare::Compare;
 
 static DELTA: usize = 3;
 static GAMMA: usize = 2;
 
-struct TreeNode<V> {
+pub struct TreeNode<V> {
     size: usize,
     elem: V,
     left: Option<Rc<TreeNode<V>>>,
     right: Option<Rc<TreeNode<V>>>
-}
-
-struct Tree<V, C: Compare<V> = Natural<V>> {
-    root: Option<Rc<TreeNode<V>>>,
-    cmp: C
-}
-
-impl<V, C> Tree<V, C> where C: Compare<V> {
-    pub fn with_comparator(cmp: C) -> Tree<V, C> {
-        Tree { root: None, cmp: cmp }
-    }
-
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
-        where C: Compare<Q, V>
-    {
-        fn f<'r, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<V>>>, cmp: &C, key: &Q)
-                -> Option<&'r V> where C: Compare<Q, V>
-        {
-            find_exact(node, |x| cmp.compare(key, x))
-        }
-
-        f(&self.root, &self.cmp, key)
-    }
-
-    pub fn len(&self) -> usize {
-        size(&self.root)
-    }
-}
-
-impl<V, C> Tree<V, C> where V: Clone, C: Compare<V> + Clone {
-    pub fn insert(&self, value: V) -> Tree<V, C>{
-        let root = insert(&self.root, value, &self.cmp);
-        Tree { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
-    }
-}
-
-impl<V: Ord> Tree<V> {
-    pub fn new() -> Tree<V> {
-        Tree::with_comparator(natural())
-    }
 }
 
 impl<V> TreeNode<V> {
@@ -66,7 +26,7 @@ impl<V> TreeNode<V> {
     }
 }
 
-fn find_exact<V, F>(node: &Option<Rc<TreeNode<V>>>, mut f: F) -> Option<&V>
+pub fn find_exact<V, F>(node: &Option<Rc<TreeNode<V>>>, mut f: F) -> Option<&V>
     where F: FnMut(&V) -> Ordering
 {
     let mut cursor = node;
@@ -82,7 +42,7 @@ fn find_exact<V, F>(node: &Option<Rc<TreeNode<V>>>, mut f: F) -> Option<&V>
     }
 }
 
-fn insert<V, C>(node: &Option<Rc<TreeNode<V>>>, elem: V, cmp: &C) -> TreeNode<V>
+pub fn insert<V, C>(node: &Option<Rc<TreeNode<V>>>, elem: V, cmp: &C) -> TreeNode<V>
     where V: Clone, C: Compare<V>
 {
     match *node {
@@ -109,7 +69,7 @@ fn insert<V, C>(node: &Option<Rc<TreeNode<V>>>, elem: V, cmp: &C) -> TreeNode<V>
     }
 }
 
-fn is_balanced(a: usize, b: usize) -> bool
+pub fn is_balanced(a: usize, b: usize) -> bool
 {
     DELTA * (a + 1) >= b + 1
 }
@@ -119,7 +79,7 @@ fn is_single(a: usize, b: usize) -> bool
     a + 1 < GAMMA * (b + 1)
 }
 
-fn size<V>(node: &Option<Rc<TreeNode<V>>>) -> usize {
+pub fn size<V>(node: &Option<Rc<TreeNode<V>>>) -> usize {
     match *node {
         None => 0,
         Some(ref n) => n.size
@@ -135,7 +95,7 @@ fn balance_left<V>(elem: V,
     if is_balanced(lsize, right.size) {
         TreeNode::new(elem, left.clone(), Some(Rc::new(right)))
     } else {
-        let TreeNode { elem: r_elem, size: rsize, left: rl, right: rr } = right;
+        let TreeNode { elem: r_elem, size: _, left: rl, right: rr } = right;
         if is_single(size(&rl), size(&rr)) {
             let new_l = TreeNode::new(elem, left.clone(), rl);
             TreeNode::new(
@@ -168,7 +128,7 @@ fn balance_right<V>(elem: V,
     if is_balanced(rsize, left.size) {
         TreeNode::new(elem, Some(Rc::new(left)), right.clone())
     } else {
-        let TreeNode { elem: l_elem, size: lsize, left: ll, right: lr } = left;
+        let TreeNode { elem: l_elem, size: _, left: ll, right: lr } = left;
         if is_single(size(&lr), size(&ll)) {
             let new_r = TreeNode::new(elem, lr, right.clone());
             TreeNode::new(
@@ -192,59 +152,24 @@ fn balance_right<V>(elem: V,
     }
 }
 
-#[cfg(test)]
-mod test {
-    use std::rc::Rc;
-
-    use super::{Tree, TreeNode, is_balanced, size};
-
-    fn traverse<V>(node: &Option<Rc<TreeNode<V>>>, res: &mut Vec<V>)
-        where V: Clone
-    {
-        if let Some(ref n) = *node {
-            traverse(&n.left, res);
-            res.push(n.elem.clone());
-            traverse(&n.right, res);
-        }
+pub fn traverse<V>(node: &Option<Rc<TreeNode<V>>>, res: &mut Vec<V>)
+    where V: Clone
+{
+    if let Some(ref n) = *node {
+        traverse(&n.left, res);
+        res.push(n.elem.clone());
+        traverse(&n.right, res);
     }
+}
 
-    fn balanced<V>(node: &Option<Rc<TreeNode<V>>>) -> bool
-    {
-        if let Some(ref n) = *node {
-            is_balanced(size(&n.left), size(&n.right))
-                && is_balanced(size(&n.right), size(&n.left))
-                && balanced(&n.left)
-                && balanced(&n.right)
-        } else {
-            true
-        }
-    }
-
-    #[test]
-    fn test_insert() {
-        let r0 = Tree::new();
-        let r1 = r0.insert((4, 'd'));
-        let r2 = r1.insert((7, 'g'));
-        let r3 = r2.insert((12, 'l'));
-        let r4 = r3.insert((15, 'o'));
-        let r5 = r4.insert((3, 'c'));
-        let r6 = r5.insert((5, 'e'));
-        let r7 = r6.insert((14, 'n'));
-        let r8 = r7.insert((18, 'r'));
-        let r9 = r8.insert((16, 'p'));
-        let r10 = r9.insert((17, 'q'));
-
-        let expected = vec![
-            (3, 'c'), (4, 'd'), (5, 'e'), (7, 'g'),
-            (12, 'l'), (14, 'n'), (15, 'o'), (16, 'p'),
-            (17, 'q'), (18, 'r')
-        ];
-
-        let mut res = Vec::new();
-        traverse(&r10.root, &mut res);
-
-        assert_eq!(expected, res);
-        assert_eq!(10, r10.len());
-        assert!(balanced(&r10.root));
+pub fn balanced<V>(node: &Option<Rc<TreeNode<V>>>) -> bool
+{
+    if let Some(ref n) = *node {
+        is_balanced(size(&n.left), size(&n.right))
+            && is_balanced(size(&n.right), size(&n.left))
+            && balanced(&n.left)
+            && balanced(&n.right)
+    } else {
+        true
     }
 }
