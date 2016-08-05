@@ -1,14 +1,11 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-#[derive(Clone, Copy)]
-enum Color {
-    Red,
-    Black
-}
+static DELTA: usize = 3;
+static GAMMA: usize = 2;
 
 struct TreeNode<K, V> {
-    color: Color,
+    size: usize,
     elem: (K, V),
     left: Option<Rc<TreeNode<K, V>>>,
     right: Option<Rc<TreeNode<K, V>>>
@@ -33,20 +30,19 @@ impl<K, V> Tree<K, V>
 
     pub fn insert(&self, key: K, value: V) -> Tree<K, V> {
         let mut root = insert(&self.root, (key, value));
-        root.color = Color::Black;
         Tree { root: Some(Rc::new(root)) }
     }
 }
 
-impl<K, V> TreeNode<K, V>
-    where K: Clone, V: Clone
-{
-    fn change_black(&self) -> TreeNode<K, V> {
+impl<K, V> TreeNode<K, V> {
+    fn new(elem: (K, V), left: Option<Rc<TreeNode<K, V>>>, right: Option<Rc<TreeNode<K, V>>>)
+        -> TreeNode<K, V>
+    {
         TreeNode {
-            color: Color::Black,
-            elem: self.elem.clone(),
-            left: self.left.clone(),
-            right: self.right.clone()
+            elem: elem,
+            size: size(&left) + size(&right) + 1,
+            left: left,
+            right: right
         }
     }
 }
@@ -72,32 +68,20 @@ fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode<K, 
 {
     match *node {
         None => TreeNode {
-            color: Color::Red,
+            size: 1,
             elem: elem,
             left: None,
             right: None
         },
         Some(ref n) => match elem.0.cmp(&n.elem.0) {
-            Ordering::Less => match n.color {
-                Color::Black => balance_left(insert(&n.left, elem), n, &n.right),
-                Color::Red => TreeNode {
-                    color: Color::Red,
-                    elem: n.elem.clone(),
-                    left: Some(Rc::new(insert(&n.left, elem))),
-                    right: n.right.clone()
-                }
+            Ordering::Less => {
+                balance_right(n.elem.clone(), insert(&n.left, elem), &n.right)
             },
-            Ordering::Greater => match n.color {
-                Color::Black => balance_right(&n.left, n, insert(&n.right, elem)),
-                Color::Red => TreeNode {
-                    color: Color::Red,
-                    elem: n.elem.clone(),
-                    left: n.left.clone(),
-                    right: Some(Rc::new(insert(&n.right, elem)))
-                }
+            Ordering::Greater => {
+                balance_left(n.elem.clone(), &n.left, insert(&n.right, elem))
             },
             Ordering::Equal => TreeNode {
-                color: n.color,
+                size: n.size,
                 elem: elem,
                 left: n.left.clone(),
                 right: n.right.clone()
@@ -106,188 +90,141 @@ fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode<K, 
     }
 }
 
-fn balance_left<K, V>(left: TreeNode<K, V>,
-                      node: &TreeNode<K, V>,
-                      right: &Option<Rc<TreeNode<K, V>>>) -> TreeNode<K, V>
-    where K: Ord + Clone, V: Clone
+fn is_balanced(a: usize, b: usize) -> bool
 {
-    if let Color::Red = left.color {
-        if let Some(ref ll) = left.left {
-            if let Color::Red = ll.color {
-                let lr = TreeNode {
-                    color: Color::Black,
-                    elem: node.elem.clone(),
-                    left: left.right.clone(),
-                    right: right.clone()
-                };
+    DELTA * (a + 1) >= b + 1
+}
 
-                return TreeNode {
-                    color: Color::Red,
-                    elem: left.elem,
-                    left: Some(Rc::new(ll.change_black())),
-                    right: Some(Rc::new(lr))
-                }
-            }
-        }
+fn is_single(a: usize, b: usize) -> bool
+{
+    a + 1 < GAMMA * (b + 1)
+}
 
-        if let Some(ref lr) = left.right {
-            if let Color::Red = lr.color {
-                return TreeNode {
-                    color: Color::Red,
-                    elem: lr.elem.clone(),
-                    left: Some(Rc::new(TreeNode {
-                        color: Color::Black,
-                        elem: left.elem,
-                        left: left.left.clone(),
-                        right: lr.left.clone()
-                    })),
-                    right: Some(Rc::new(TreeNode {
-                        color: Color::Black,
-                        elem: node.elem.clone(),
-                        left: lr.right.clone(),
-                        right: right.clone()
-                    }))
-                }
-            }
-        }
-    }
-
-    TreeNode {
-        color: Color::Black,
-        elem: node.elem.clone(),
-        left: Some(Rc::new(left)),
-        right: right.clone()
+fn size<K, V>(node: &Option<Rc<TreeNode<K, V>>>) -> usize {
+    match *node {
+        None => 0,
+        Some(ref n) => n.size
     }
 }
 
-fn balance_right<K, V>(left: &Option<Rc<TreeNode<K, V>>>,
-                       node: &TreeNode<K, V>,
-                       right: TreeNode<K, V>) -> TreeNode<K, V>
+fn balance_left<K, V>(elem: (K, V),
+                      left: &Option<Rc<TreeNode<K, V>>>,
+                      right: TreeNode<K, V>) -> TreeNode<K, V>
     where K: Ord + Clone, V: Clone
 {
-    if let Color::Red = right.color {
-        if let Some(ref rr) = right.right {
-            if let Color::Red = rr.color {
-                let rl = TreeNode {
-                    color: Color::Black,
-                    elem: node.elem.clone(),
-                    left: left.clone(),
-                    right: right.left.clone()
-                };
-
-                return TreeNode {
-                    color: Color::Red,
-                    elem: right.elem,
-                    left: Some(Rc::new(rl)),
-                    right: Some(Rc::new(rr.change_black()))
-                }
-            }
-        }
-
-        if let Some(ref rl) = right.left {
-            if let Color::Red = rl.color {
-                return TreeNode {
-                    color: Color::Red,
-                    elem: rl.elem.clone(),
-                    left: Some(Rc::new(TreeNode {
-                        color: Color::Black,
-                        elem: node.elem.clone(),
-                        left: left.clone(),
-                        right: rl.left.clone()
-                    })),
-                    right: Some(Rc::new(TreeNode {
-                        color: Color::Black,
-                        elem: right.elem,
-                        left: rl.right.clone(),
-                        right: right.right.clone()
-                    }))
-                }
+    let lsize = size(left);
+    if is_balanced(lsize, right.size) {
+        TreeNode::new(elem, left.clone(), Some(Rc::new(right)))
+    } else {
+        let TreeNode { elem: r_elem, size: rsize, left: rl, right: rr } = right;
+        if is_single(size(&rl), size(&rr)) {
+            let new_l = TreeNode::new(elem, left.clone(), rl);
+            TreeNode::new(
+                r_elem,
+                Some(Rc::new(new_l)),
+                rr
+            )
+        } else {
+            if let Some(ref rl_node) = rl {
+                let new_l = TreeNode::new(elem, left.clone(), rl_node.left.clone());
+                let new_r = TreeNode::new(r_elem, rl_node.right.clone(), rr);
+                TreeNode::new(
+                    rl_node.elem.clone(),
+                    Some(Rc::new(new_l)),
+                    Some(Rc::new(new_r))
+                )
+            } else {
+                panic!("size invariant does not match!")
             }
         }
     }
+}
 
-    TreeNode {
-        color: Color::Black,
-        elem: node.elem.clone(),
-        left: left.clone(),
-        right: Some(Rc::new(right))
+fn balance_right<K, V>(elem: (K, V),
+                       left: TreeNode<K, V>,
+                       right: &Option<Rc<TreeNode<K, V>>>) -> TreeNode<K, V>
+    where K: Ord + Clone, V: Clone
+{
+    let rsize = size(right);
+    if is_balanced(rsize, left.size) {
+        TreeNode::new(elem, Some(Rc::new(left)), right.clone())
+    } else {
+        let TreeNode { elem: l_elem, size: lsize, left: ll, right: lr } = left;
+        if is_single(size(&lr), size(&ll)) {
+            let new_r = TreeNode::new(elem, lr, right.clone());
+            TreeNode::new(
+                l_elem,
+                ll,
+                Some(Rc::new(new_r)),
+            )
+        } else {
+            if let Some(ref lr_node) = lr {
+                let new_l = TreeNode::new(l_elem, ll, lr_node.left.clone());
+                let new_r = TreeNode::new(elem, lr_node.right.clone(), right.clone());
+                TreeNode::new(
+                    lr_node.elem.clone(),
+                    Some(Rc::new(new_l)),
+                    Some(Rc::new(new_r))
+                )
+            } else {
+                panic!("size invariant does not match!")
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::fmt;
+    use std::rc::Rc;
 
-    use super::{Color, Tree, TreeNode};
+    use super::{Tree, TreeNode, is_balanced, size};
 
-    fn format_tree<K, V>(f: &mut fmt::Formatter, node: &TreeNode<K, V>) -> fmt::Result
-        where K: fmt::Display, V: fmt::Display
+    fn traverse<K, V>(node: &Option<Rc<TreeNode<K, V>>>, res: &mut Vec<(K, V)>)
+        where K: Clone, V: Clone
     {
-        try!(write!(f, "("));
-        if let Some(ref l) = node.left {
-            try!(format_tree(f, l));
-            try!(write!(f, " "));
+        if let Some(ref n) = *node {
+            traverse(&n.left, res);
+            res.push(n.elem.clone());
+            traverse(&n.right, res);
         }
-
-        match node.color {
-            Color::Black => try!(write!(f, "B")),
-            Color::Red => try!(write!(f, "R"))
-        }
-
-        try!(write!(f, "{}{}", node.elem.0, node.elem.1));
-
-        if let Some(ref r) = node.right {
-            try!(write!(f, " "));
-            try!(format_tree(f, r));
-        }
-
-        write!(f, ")")
     }
 
-    impl<K, V> fmt::Display for Tree<K, V> where K: fmt::Display, V: fmt::Display
+    fn balanced<K, V>(node: &Option<Rc<TreeNode<K, V>>>) -> bool
     {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self.root {
-                None => write!(f, "()"),
-                Some(ref root) => format_tree(f, root)
-            }
+        if let Some(ref n) = *node {
+            is_balanced(size(&n.left), size(&n.right))
+                && is_balanced(size(&n.right), size(&n.left))
+                && balanced(&n.left)
+                && balanced(&n.right)
+        } else {
+            true
         }
-
     }
 
     #[test]
     fn test_insert() {
         let r0 = Tree::new();
-        assert_eq!("()".to_string(), format!("{}", r0));
+        let r1 = r0.insert(4, 'd');
+        let r2 = r1.insert(7, 'g');
+        let r3 = r2.insert(12, 'l');
+        let r4 = r3.insert(15, 'o');
+        let r5 = r4.insert(3, 'c');
+        let r6 = r5.insert(5, 'e');
+        let r7 = r6.insert(14, 'n');
+        let r8 = r7.insert(18, 'r');
+        let r9 = r8.insert(16, 'p');
+        let r10 = r9.insert(17, 'q');
 
-        let r1 = r0.insert(4, "d");
-        assert_eq!("(B4d)".to_string(), format!("{}", r1));
+        let expected = vec![
+            (3, 'c'), (4, 'd'), (5, 'e'), (7, 'g'),
+            (12, 'l'), (14, 'n'), (15, 'o'), (16, 'p'),
+            (17, 'q'), (18, 'r')
+        ];
 
-        let r2 = r1.insert(7, "g");
-        assert_eq!("(B4d (R7g))".to_string(), format!("{}", r2));
+        let mut res = Vec::new();
+        traverse(&r10.root, &mut res);
 
-        let r3 = r2.insert(12, "l");
-        assert_eq!("((B4d) B7g (B12l))".to_string(), format!("{}", r3));
-
-        let r4 = r3.insert(15, "o");
-        assert_eq!("((B4d) B7g (B12l (R15o)))".to_string(), format!("{}", r4));
-
-        let r5 = r4.insert(3, "c");
-        assert_eq!("(((R3c) B4d) B7g (B12l (R15o)))".to_string(), format!("{}", r5));
-
-        let r6 = r5.insert(5, "e");
-        assert_eq!("(((R3c) B4d (R5e)) B7g (B12l (R15o)))".to_string(), format!("{}", r6));
-
-        let r7 = r6.insert(14, "n");
-        assert_eq!("(((R3c) B4d (R5e)) B7g ((B12l) R14n (B15o)))".to_string(), format!("{}", r7));
-
-        let r8 = r7.insert(18, "r");
-        assert_eq!("(((R3c) B4d (R5e)) B7g ((B12l) R14n (B15o (R18r))))".to_string(), format!("{}", r8));
-
-        let r9 = r8.insert(16, "p");
-        assert_eq!("((((R3c) B4d (R5e)) B7g (B12l)) B14n ((B15o) B16p (B18r)))".to_string(), format!("{}", r9));
-
-        let r10 = r9.insert(17, "q");
-        assert_eq!("((((R3c) B4d (R5e)) B7g (B12l)) B14n ((B15o) B16p ((R17q) B18r)))".to_string(), format!("{}", r10));
+        assert_eq!(expected, res);
+        assert!(balanced(&r10.root));
     }
 }
