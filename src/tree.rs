@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
+use compare::{Compare, Natural, natural};
+
 static DELTA: usize = 3;
 static GAMMA: usize = 2;
 
@@ -11,26 +13,39 @@ struct TreeNode<K, V> {
     right: Option<Rc<TreeNode<K, V>>>
 }
 
-struct Tree<K, V> {
-    root: Option<Rc<TreeNode<K, V>>>
+struct Tree<K, V, C: Compare<K> = Natural<K>> {
+    root: Option<Rc<TreeNode<K, V>>>,
+    cmp: C
 }
 
-impl<K, V> Tree<K, V> {
+impl<K, V, C> Tree<K, V, C> where C: Compare<K> {
+    pub fn with_comparator(cmp: C) -> Tree<K, V, C> {
+        Tree { root: None, cmp: cmp }
+    }
+
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+        where C: Compare<Q, K>
+    {
+        fn f<'r, K, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<K, V>>>, cmp: &C, key: &Q)
+                -> Option<&'r V> where C: Compare<Q, K>
+        {
+            find_exact(node, |k| cmp.compare(key, k))
+        }
+
+        f(&self.root, &self.cmp, key)
+    }
+}
+
+impl<K, V, C> Tree<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
+    pub fn insert(&self, key: K, value: V) -> Tree<K, V, C>{
+        let mut root = insert(&self.root, (key, value), &self.cmp);
+        Tree { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
+    }
+}
+
+impl<K: Ord, V> Tree<K, V> {
     pub fn new() -> Tree<K, V> {
-        Tree { root: None }
-    }
-}
-
-impl<K, V> Tree<K, V>
-    where K: Ord + Clone, V: Clone
-{
-    pub fn get(&self, key: &K) -> Option<&V> {
-        find_exact(&self.root, key)
-    }
-
-    pub fn insert(&self, key: K, value: V) -> Tree<K, V> {
-        let mut root = insert(&self.root, (key, value));
-        Tree { root: Some(Rc::new(root)) }
+        Tree::with_comparator(natural())
     }
 }
 
@@ -47,14 +62,14 @@ impl<K, V> TreeNode<K, V> {
     }
 }
 
-fn find_exact<'a, K, V>(node: &'a Option<Rc<TreeNode<K, V>>>, key: &K) -> Option<&'a V>
-    where K: Ord
+fn find_exact<K, V, F>(node: &Option<Rc<TreeNode<K, V>>>, mut f: F) -> Option<&V>
+    where F: FnMut(&K) -> Ordering
 {
     let mut cursor = node;
     loop {
         match *cursor {
             None => return None,
-            Some(ref n) => match key.cmp(&n.elem.0) {
+            Some(ref n) => match f(&n.elem.0) {
                 Ordering::Less => cursor = &n.left,
                 Ordering::Equal => return Some(&n.elem.1),
                 Ordering::Greater => cursor = &n.right,
@@ -63,8 +78,8 @@ fn find_exact<'a, K, V>(node: &'a Option<Rc<TreeNode<K, V>>>, key: &K) -> Option
     }
 }
 
-fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode<K, V>
-    where K: Ord + Clone, V: Clone
+fn insert<K, V, C>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V), cmp: &C) -> TreeNode<K, V>
+    where K: Clone, V: Clone, C: Compare<K>
 {
     match *node {
         None => TreeNode {
@@ -73,12 +88,12 @@ fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode<K, 
             left: None,
             right: None
         },
-        Some(ref n) => match elem.0.cmp(&n.elem.0) {
+        Some(ref n) => match cmp.compare(&elem.0, &n.elem.0) {
             Ordering::Less => {
-                balance_right(n.elem.clone(), insert(&n.left, elem), &n.right)
+                balance_right(n.elem.clone(), insert(&n.left, elem, cmp), &n.right)
             },
             Ordering::Greater => {
-                balance_left(n.elem.clone(), &n.left, insert(&n.right, elem))
+                balance_left(n.elem.clone(), &n.left, insert(&n.right, elem, cmp))
             },
             Ordering::Equal => TreeNode {
                 size: n.size,
@@ -110,7 +125,7 @@ fn size<K, V>(node: &Option<Rc<TreeNode<K, V>>>) -> usize {
 fn balance_left<K, V>(elem: (K, V),
                       left: &Option<Rc<TreeNode<K, V>>>,
                       right: TreeNode<K, V>) -> TreeNode<K, V>
-    where K: Ord + Clone, V: Clone
+    where K: Clone, V: Clone
 {
     let lsize = size(left);
     if is_balanced(lsize, right.size) {
@@ -143,7 +158,7 @@ fn balance_left<K, V>(elem: (K, V),
 fn balance_right<K, V>(elem: (K, V),
                        left: TreeNode<K, V>,
                        right: &Option<Rc<TreeNode<K, V>>>) -> TreeNode<K, V>
-    where K: Ord + Clone, V: Clone
+    where K: Clone, V: Clone
 {
     let rsize = size(right);
     if is_balanced(rsize, left.size) {
