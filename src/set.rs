@@ -27,6 +27,12 @@ impl<V, C> Set<V, C> where C: Compare<V> {
         f(&self.root, &self.cmp, key)
     }
 
+    pub fn contains<Q: ?Sized>(&self, key: &Q) -> bool
+        where C: Compare<Q, V>
+    {
+        self.get(key).is_some()
+    }
+
     pub fn len(&self) -> usize {
         tree::size(&self.root)
     }
@@ -76,5 +82,6 @@ mod test {
         assert_eq!(expected, res);
         assert_eq!(10, r10.len());
         assert!(balanced(&r10.root));
+        assert!(r10.contains(&(12, 'l')));
     }
 }

@@ -152,6 +152,7 @@ fn balance_right<V>(elem: V,
     }
 }
 
+#[cfg(test)]
 pub fn traverse<V>(node: &Option<Rc<TreeNode<V>>>, res: &mut Vec<V>)
     where V: Clone
 {
@@ -162,6 +163,7 @@ pub fn traverse<V>(node: &Option<Rc<TreeNode<V>>>, res: &mut Vec<V>)
     }
 }
 
+#[cfg(test)]
 pub fn balanced<V>(node: &Option<Rc<TreeNode<V>>>) -> bool
 {
     if let Some(ref n) = *node {
