@@ -50,12 +50,7 @@ pub fn delete_min<V>(node: &TreeNode<V>) -> (Option<Rc<TreeNode<V>>>, &V)
         None => (node.right.clone(), &node.elem),
         Some(ref l) => {
             let (new_left, v) = delete_min(l);
-            let new_node = match node.right {
-                None =>
-                    TreeNode::new(node.elem.clone(), new_left, None),
-                Some(ref r) =>
-                    balance_left(node.elem.clone(), &new_left, (**r).clone())
-            };
+            let new_node = balance_left(node.elem.clone(), &new_left, &node.right);
             (Some(Rc::new(new_node)), v)
         }
     }
@@ -68,12 +63,7 @@ pub fn delete_max<V>(node: &TreeNode<V>) -> (Option<Rc<TreeNode<V>>>, &V)
         None => (node.left.clone(), &node.elem),
         Some(ref r) => {
             let (new_right, v) = delete_max(r);
-            let new_node = match node.left {
-                None =>
-                    TreeNode::new(node.elem.clone(), None, new_right),
-                Some(ref l) =>
-                    balance_right(node.elem.clone(), (**l).clone(), &new_right)
-            };
+            let new_node = balance_right(node.elem.clone(), &node.left, &new_right);
             (Some(Rc::new(new_node)), v)
         }
     }
@@ -91,10 +81,10 @@ pub fn insert<V, C>(node: &Option<Rc<TreeNode<V>>>, elem: V, cmp: &C) -> TreeNod
         },
         Some(ref n) => match cmp.compare(&elem, &n.elem) {
             Ordering::Less => {
-                balance_right(n.elem.clone(), insert(&n.left, elem, cmp), &n.right)
+                balance_right_move(n.elem.clone(), insert(&n.left, elem, cmp), &n.right)
             },
             Ordering::Greater => {
-                balance_left(n.elem.clone(), &n.left, insert(&n.right, elem, cmp))
+                balance_left_move(n.elem.clone(), &n.left, insert(&n.right, elem, cmp))
             },
             Ordering::Equal => TreeNode {
                 size: n.size,
@@ -102,6 +92,47 @@ pub fn insert<V, C>(node: &Option<Rc<TreeNode<V>>>, elem: V, cmp: &C) -> TreeNod
                 left: n.left.clone(),
                 right: n.right.clone()
             }
+        }
+    }
+}
+
+pub fn remove<'r, Q: ?Sized, V, C>(node: &'r Option<Rc<TreeNode<V>>>, key: &Q, cmp: &C)
+        -> Option<(Option<Rc<TreeNode<V>>>, &'r V)>
+    where V: Clone, C: Compare<Q, V>
+{
+    if let Some(ref n) = *node {
+        match cmp.compare(key, &n.elem) {
+            Ordering::Less => remove(&n.left, key, cmp).map(|(new_left, v)|
+                (Some(Rc::new(balance_left(n.elem.clone(), &new_left, &n.right))), v)
+            ),
+            Ordering::Greater => remove(&n.right, key, cmp).map(|(new_right, v)|
+                (Some(Rc::new(balance_right(n.elem.clone(), &n.left, &new_right))), v)
+            ),
+            Ordering::Equal => Some((glue(&n.left, &n.right), &n.elem))
+        }
+    } else {
+        None
+    }
+}
+
+// merge the two trees together.
+// assumes that left.rightmost < right.leftmost
+fn glue<V>(left: &Option<Rc<TreeNode<V>>>, right: &Option<Rc<TreeNode<V>>>)
+        -> Option<Rc<TreeNode<V>>>
+    where V: Clone
+{
+    match *left {
+        None => right.clone(),
+        Some(ref l) => match *right {
+            None => left.clone(),
+            Some(ref r) =>
+                if l.size > r.size {
+                    let (new_l, elem) = delete_max(l);
+                    Some(Rc::new(balance_left_move(elem.clone(), &new_l, (**r).clone())))
+                } else {
+                    let (new_r, elem) = delete_min(r);
+                    Some(Rc::new(balance_right_move(elem.clone(), (**l).clone(), &new_r)))
+                }
         }
     }
 }
@@ -125,7 +156,19 @@ pub fn size<V>(node: &Option<Rc<TreeNode<V>>>) -> usize {
 
 fn balance_left<V>(elem: V,
                    left: &Option<Rc<TreeNode<V>>>,
-                   right: TreeNode<V>) -> TreeNode<V>
+                   right: &Option<Rc<TreeNode<V>>>) -> TreeNode<V>
+    where V: Clone
+{
+    if let Some(ref r) = *right {
+        balance_left_move(elem, left, (**r).clone())
+    } else {
+        TreeNode::new(elem, left.clone(), None)
+    }
+}
+
+fn balance_left_move<V>(elem: V,
+                        left: &Option<Rc<TreeNode<V>>>,
+                        right: TreeNode<V>) -> TreeNode<V>
     where V: Clone
 {
     let lsize = size(left);
@@ -157,8 +200,20 @@ fn balance_left<V>(elem: V,
 }
 
 fn balance_right<V>(elem: V,
-                    left: TreeNode<V>,
+                    left: &Option<Rc<TreeNode<V>>>,
                     right: &Option<Rc<TreeNode<V>>>) -> TreeNode<V>
+    where V: Clone
+{
+    if let Some(ref l) = *left {
+        balance_right_move(elem, (**l).clone(), right)
+    } else {
+        TreeNode::new(elem, None, right.clone())
+    }
+}
+
+fn balance_right_move<V>(elem: V,
+                         left: TreeNode<V>,
+                         right: &Option<Rc<TreeNode<V>>>) -> TreeNode<V>
     where V: Clone
 {
     let rsize = size(right);

@@ -39,7 +39,8 @@ impl<V, C> Set<V, C> where C: Compare<V> {
 }
 
 impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
-    pub fn insert(&self, value: V) -> Set<V, C>{
+    pub fn insert(&self, value: V) -> Set<V, C>
+    {
         let root = tree::insert(&self.root, value, &self.cmp);
         Set { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
     }
@@ -68,6 +69,14 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
         } else {
             None
         }
+    }
+
+    pub fn remove<Q: ?Sized>(&self, key: &Q) -> Option<(Set<V, C>, &V)>
+        where C: Compare<Q, V>
+    {
+        tree::remove(&self.root, key, &self.cmp).map(|(new_root, v)|
+            (Set { root: new_root, cmp: self.cmp.clone() }, v)
+        )
     }
 }
 
@@ -145,5 +154,23 @@ mod test {
         traverse(&r7.root, &mut res);
         assert_eq!(expected, res);
         assert_eq!(&15, v);
+    }
+
+    #[test]
+    fn test_remove() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let (r7, v) = r6.remove(&7).unwrap();
+
+        let mut res = Vec::new();
+        let expected = vec![3, 4, 5, 12, 15];
+        traverse(&r7.root, &mut res);
+        assert_eq!(expected, res);
+        assert_eq!(&7, v);
     }
 }
