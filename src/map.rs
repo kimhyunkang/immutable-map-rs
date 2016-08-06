@@ -24,7 +24,7 @@ impl<K, V, C> Compare<(K, V)> for KeyCompare<C> where C: Compare<K> {
 }
 
 pub struct Map<K, V, C: Compare<K> = Natural<K>> {
-    root: Option<Rc<TreeNode<(K, V)>>>,
+    root: Option<Rc<TreeNode<K, V>>>,
     cmp: KeyCompare<C>
 }
 
@@ -36,10 +36,10 @@ impl<K, V, C> Map<K, V, C> where C: Compare<K> {
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
         where C: Compare<Q, K>
     {
-        fn f<'r, K, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<(K, V)>>>, cmp: &C, key: &Q)
+        fn f<'r, K, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<K, V>>>, cmp: &C, key: &Q)
                 -> Option<&'r V> where C: Compare<Q, K>
         {
-            tree::find_exact(node, |&(ref k, _)| cmp.compare(key, k)).map(|p| &p.1)
+            tree::find_exact(node, |k| cmp.compare(key, k)).map(|p| &p.1)
         }
 
         f(&self.root, &self.cmp.key_cmp, key)
@@ -59,7 +59,7 @@ impl<K, V, C> Map<K, V, C> where C: Compare<K> {
 impl<K, V, C> Map<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
     pub fn insert(&self, key: K, value: V) -> Map<K, V, C>
     {
-        let root = tree::insert(&self.root, (key, value), &self.cmp);
+        let root = tree::insert(&self.root, (key, value), &self.cmp.key_cmp);
         Map { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
     }
 
@@ -87,6 +87,14 @@ impl<K, V, C> Map<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
         } else {
             None
         }
+    }
+
+    pub fn remove<Q: ?Sized>(&self, key: &Q) -> Option<(Map<K, V, C>, &(K, V))>
+        where C: Compare<Q, K>
+    {
+        tree::remove(&self.root, key, &self.cmp.key_cmp).map(|(new_root, v)|
+            (Map { root: new_root, cmp: self.cmp.clone() }, v)
+        )
     }
 }
 
@@ -164,5 +172,23 @@ mod test {
         traverse(&r7.root, &mut res);
         assert_eq!(expected, res);
         assert_eq!(&(15, 'o'), v);
+    }
+
+    #[test]
+    fn test_remove() {
+        let r0 = Map::new();
+        let r1 = r0.insert(4, 'd');
+        let r2 = r1.insert(7, 'g');
+        let r3 = r2.insert(12, 'l');
+        let r4 = r3.insert(15, 'o');
+        let r5 = r4.insert(3, 'c');
+        let r6 = r5.insert(5, 'e');
+        let (r7, v) = r6.remove(&7).unwrap();
+
+        let mut res = Vec::new();
+        let expected = vec![(3, 'c'), (4, 'd'), (5, 'e'), (12, 'l'), (15, 'o')];
+        traverse(&r7.root, &mut res);
+        assert_eq!(expected, res);
+        assert_eq!(&(7, 'g'), v);
     }
 }

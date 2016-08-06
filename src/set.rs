@@ -6,7 +6,7 @@ use tree;
 use tree::TreeNode;
 
 pub struct Set<V, C: Compare<V> = Natural<V>> {
-    root: Option<Rc<TreeNode<V>>>,
+    root: Option<Rc<TreeNode<V, ()>>>,
     cmp: C
 }
 
@@ -18,10 +18,10 @@ impl<V, C> Set<V, C> where C: Compare<V> {
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
         where C: Compare<Q, V>
     {
-        fn f<'r, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<V>>>, cmp: &C, key: &Q)
+        fn f<'r, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<V, ()>>>, cmp: &C, key: &Q)
                 -> Option<&'r V> where C: Compare<Q, V>
         {
-            tree::find_exact(node, |x| cmp.compare(key, x))
+            tree::find_exact(node, |x| cmp.compare(key, x)).map(|p| &p.0)
         }
 
         f(&self.root, &self.cmp, key)
@@ -41,7 +41,7 @@ impl<V, C> Set<V, C> where C: Compare<V> {
 impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
     pub fn insert(&self, value: V) -> Set<V, C>
     {
-        let root = tree::insert(&self.root, value, &self.cmp);
+        let root = tree::insert(&self.root, (value, ()), &self.cmp);
         Set { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
     }
 
@@ -51,7 +51,7 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
             let (new_root, v) = tree::delete_min(&root);
             Some((
                 Set { root: new_root, cmp: self.cmp.clone() },
-                v
+                &v.0
             ))
         } else {
             None
@@ -64,7 +64,7 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
             let (new_root, v) = tree::delete_max(&root);
             Some((
                 Set { root: new_root, cmp: self.cmp.clone() },
-                v
+                &v.0
             ))
         } else {
             None
@@ -75,7 +75,7 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
         where C: Compare<Q, V>
     {
         tree::remove(&self.root, key, &self.cmp).map(|(new_root, v)|
-            (Set { root: new_root, cmp: self.cmp.clone() }, v)
+            (Set { root: new_root, cmp: self.cmp.clone() }, &v.0)
         )
     }
 }
@@ -111,8 +111,9 @@ mod test {
             (17, 'q'), (18, 'r')
         ];
 
-        let mut res = Vec::new();
-        traverse(&r10.root, &mut res);
+        let mut pairs = Vec::new();
+        traverse(&r10.root, &mut pairs);
+        let res: Vec<(usize, char)> = pairs.into_iter().map(|p| p.0).collect();
 
         assert_eq!(expected, res);
         assert_eq!(10, r10.len());
@@ -131,9 +132,12 @@ mod test {
         let r6 = r5.insert(5);
         let (r7, v) = r6.delete_min().unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![4, 5, 7, 12, 15];
-        traverse(&r7.root, &mut res);
+
+        let mut pairs = Vec::new();
+        traverse(&r7.root, &mut pairs);
+        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
+
         assert_eq!(expected, res);
         assert_eq!(&3, v);
     }
@@ -149,9 +153,12 @@ mod test {
         let r6 = r5.insert(5);
         let (r7, v) = r6.delete_max().unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![3, 4, 5, 7, 12];
-        traverse(&r7.root, &mut res);
+
+        let mut pairs = Vec::new();
+        traverse(&r7.root, &mut pairs);
+        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
+
         assert_eq!(expected, res);
         assert_eq!(&15, v);
     }
@@ -167,9 +174,11 @@ mod test {
         let r6 = r5.insert(5);
         let (r7, v) = r6.remove(&7).unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![3, 4, 5, 12, 15];
-        traverse(&r7.root, &mut res);
+
+        let mut pairs = Vec::new();
+        traverse(&r7.root, &mut pairs);
+        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
         assert_eq!(expected, res);
         assert_eq!(&7, v);
     }
