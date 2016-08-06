@@ -1,7 +1,6 @@
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::rc::Rc;
-
-use compare::Compare;
 
 static DELTA: usize = 3;
 static GAMMA: usize = 2;
@@ -69,8 +68,8 @@ pub fn delete_max<K, V>(node: &TreeNode<K, V>) -> (Option<Rc<TreeNode<K, V>>>, &
     }
 }
 
-pub fn insert<K, V, C>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V), cmp: &C) -> TreeNode<K, V>
-    where K: Clone, V: Clone, C: Compare<K>
+pub fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode<K, V>
+    where K: Clone + Ord, V: Clone
 {
     match *node {
         None => TreeNode {
@@ -79,12 +78,12 @@ pub fn insert<K, V, C>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V), cmp: &C)
             left: None,
             right: None
         },
-        Some(ref n) => match cmp.compare(&elem.0, &n.elem.0) {
+        Some(ref n) => match elem.0.cmp(&n.elem.0) {
             Ordering::Less => {
-                balance_right_move(n.elem.clone(), insert(&n.left, elem, cmp), &n.right)
+                balance_right_move(n.elem.clone(), insert(&n.left, elem), &n.right)
             },
             Ordering::Greater => {
-                balance_left_move(n.elem.clone(), &n.left, insert(&n.right, elem, cmp))
+                balance_left_move(n.elem.clone(), &n.left, insert(&n.right, elem))
             },
             Ordering::Equal => TreeNode {
                 size: n.size,
@@ -96,16 +95,16 @@ pub fn insert<K, V, C>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V), cmp: &C)
     }
 }
 
-pub fn remove<'r, Q: ?Sized, K, V, C>(node: &'r Option<Rc<TreeNode<K, V>>>, key: &Q, cmp: &C)
+pub fn remove<'r, Q: ?Sized + Ord, K, V>(node: &'r Option<Rc<TreeNode<K, V>>>, key: &Q)
         -> Option<(Option<Rc<TreeNode<K, V>>>, &'r (K, V))>
-    where K: Clone, V: Clone, C: Compare<Q, K>
+    where K: Clone + Ord + Borrow<Q>, V: Clone
 {
     if let Some(ref n) = *node {
-        match cmp.compare(key, &n.elem.0) {
-            Ordering::Less => remove(&n.left, key, cmp).map(|(new_left, v)|
+        match key.cmp(n.elem.0.borrow()) {
+            Ordering::Less => remove(&n.left, key).map(|(new_left, v)|
                 (Some(Rc::new(balance_left(n.elem.clone(), &new_left, &n.right))), v)
             ),
-            Ordering::Greater => remove(&n.right, key, cmp).map(|(new_right, v)|
+            Ordering::Greater => remove(&n.right, key).map(|(new_right, v)|
                 (Some(Rc::new(balance_right(n.elem.clone(), &n.left, &new_right))), v)
             ),
             Ordering::Equal => Some((glue(&n.left, &n.right), &n.elem))

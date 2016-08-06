@@ -1,5 +1,3 @@
-extern crate compare;
-
 pub mod set;
 pub mod map;
 mod tree;

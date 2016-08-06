@@ -1,52 +1,32 @@
-use std::cmp::Ordering;
+use std::borrow::Borrow;
 use std::rc::Rc;
-
-use compare::{Compare, Natural, natural};
 
 use tree;
 use tree::TreeNode;
 
-#[derive(Clone)]
-struct KeyCompare<C> {
-    key_cmp: C
+pub struct Map<K, V> {
+    root: Option<Rc<TreeNode<K, V>>>
 }
 
-impl<C> KeyCompare<C> {
-    fn new(cmp: C) -> KeyCompare<C> {
-        KeyCompare { key_cmp: cmp }
-    }
-}
-
-impl<K, V, C> Compare<(K, V)> for KeyCompare<C> where C: Compare<K> {
-    fn compare(&self, l: &(K, V), r: &(K, V)) -> Ordering {
-        self.key_cmp.compare(&l.0, &r.0)
-    }
-}
-
-pub struct Map<K, V, C: Compare<K> = Natural<K>> {
-    root: Option<Rc<TreeNode<K, V>>>,
-    cmp: KeyCompare<C>
-}
-
-impl<K, V, C> Map<K, V, C> where C: Compare<K> {
-    pub fn with_comparator(cmp: C) -> Map<K, V, C> {
-        Map { root: None, cmp: KeyCompare::new(cmp) }
+impl<K, V> Map<K, V> where K: Ord {
+    pub fn new() -> Map<K, V> {
+        Map { root: None }
     }
 
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
-        where C: Compare<Q, K>
+    pub fn get<Q: ?Sized + Ord>(&self, key: &Q) -> Option<&V>
+        where K: Borrow<Q>
     {
-        fn f<'r, K, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<K, V>>>, cmp: &C, key: &Q)
-                -> Option<&'r V> where C: Compare<Q, K>
+        fn f<'r, K, V, Q: ?Sized + Ord>(node: &'r Option<Rc<TreeNode<K, V>>>, key: &Q)
+                -> Option<&'r V> where K: Borrow<Q>
         {
-            tree::find_exact(node, |k| cmp.compare(key, k)).map(|p| &p.1)
+            tree::find_exact(node, |k| key.cmp(k.borrow())).map(|p| &p.1)
         }
 
-        f(&self.root, &self.cmp.key_cmp, key)
+        f(&self.root, key)
     }
 
-    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
-        where C: Compare<Q, K>
+    pub fn contains_key<Q: ?Sized + Ord>(&self, key: &Q) -> bool
+        where K: Borrow<Q>
     {
         self.get(key).is_some()
     }
@@ -56,19 +36,19 @@ impl<K, V, C> Map<K, V, C> where C: Compare<K> {
     }
 }
 
-impl<K, V, C> Map<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
-    pub fn insert(&self, key: K, value: V) -> Map<K, V, C>
+impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
+    pub fn insert(&self, key: K, value: V) -> Map<K, V>
     {
-        let root = tree::insert(&self.root, (key, value), &self.cmp.key_cmp);
-        Map { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
+        let root = tree::insert(&self.root, (key, value));
+        Map { root: Some(Rc::new(root)) }
     }
 
-    pub fn delete_min(&self) -> Option<(Map<K, V, C>, &(K, V))>
+    pub fn delete_min(&self) -> Option<(Map<K, V>, &(K, V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_min(&root);
             Some((
-                Map { root: new_root, cmp: self.cmp.clone() },
+                Map { root: new_root },
                 v
             ))
         } else {
@@ -76,12 +56,12 @@ impl<K, V, C> Map<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
         }
     }
 
-    pub fn delete_max(&self) -> Option<(Map<K, V, C>, &(K, V))>
+    pub fn delete_max(&self) -> Option<(Map<K, V>, &(K, V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_max(&root);
             Some((
-                Map { root: new_root, cmp: self.cmp.clone() },
+                Map { root: new_root },
                 v
             ))
         } else {
@@ -89,18 +69,12 @@ impl<K, V, C> Map<K, V, C> where K: Clone, V: Clone, C: Compare<K> + Clone {
         }
     }
 
-    pub fn remove<Q: ?Sized>(&self, key: &Q) -> Option<(Map<K, V, C>, &(K, V))>
-        where C: Compare<Q, K>
+    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(Map<K, V>, &(K, V))>
+        where K: Borrow<Q>
     {
-        tree::remove(&self.root, key, &self.cmp.key_cmp).map(|(new_root, v)|
-            (Map { root: new_root, cmp: self.cmp.clone() }, v)
+        tree::remove(&self.root, key).map(|(new_root, v)|
+            (Map { root: new_root }, v)
         )
-    }
-}
-
-impl<K: Ord, V> Map<K, V> {
-    pub fn new() -> Map<K, V> {
-        Map::with_comparator(natural())
     }
 }
 

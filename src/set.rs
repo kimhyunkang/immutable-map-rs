@@ -1,34 +1,32 @@
+use std::borrow::Borrow;
 use std::rc::Rc;
-
-use compare::{Compare, Natural, natural};
 
 use tree;
 use tree::TreeNode;
 
-pub struct Set<V, C: Compare<V> = Natural<V>> {
+pub struct Set<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
-    cmp: C
 }
 
-impl<V, C> Set<V, C> where C: Compare<V> {
-    pub fn with_comparator(cmp: C) -> Set<V, C> {
-        Set { root: None, cmp: cmp }
+impl<V: Ord> Set<V> {
+    pub fn new() -> Set<V> {
+        Set { root: None }
     }
 
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
-        where C: Compare<Q, V>
+    pub fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<&V>
+        where V: Borrow<Q>
     {
-        fn f<'r, V, C, Q: ?Sized>(node: &'r Option<Rc<TreeNode<V, ()>>>, cmp: &C, key: &Q)
-                -> Option<&'r V> where C: Compare<Q, V>
+        fn f<'r, V: Borrow<Q>, Q: Ord + ?Sized>(node: &'r Option<Rc<TreeNode<V, ()>>>, key: &Q)
+                -> Option<&'r V>
         {
-            tree::find_exact(node, |x| cmp.compare(key, x)).map(|p| &p.0)
+            tree::find_exact(node, |x| key.cmp(x.borrow())).map(|p| &p.0)
         }
 
-        f(&self.root, &self.cmp, key)
+        f(&self.root, key)
     }
 
-    pub fn contains<Q: ?Sized>(&self, key: &Q) -> bool
-        where C: Compare<Q, V>
+    pub fn contains<Q: Ord + ?Sized>(&self, key: &Q) -> bool
+        where V: Borrow<Q>
     {
         self.get(key).is_some()
     }
@@ -38,19 +36,19 @@ impl<V, C> Set<V, C> where C: Compare<V> {
     }
 }
 
-impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
-    pub fn insert(&self, value: V) -> Set<V, C>
+impl<V: Ord> Set<V> where V: Clone {
+    pub fn insert(&self, value: V) -> Set<V>
     {
-        let root = tree::insert(&self.root, (value, ()), &self.cmp);
-        Set { root: Some(Rc::new(root)), cmp: self.cmp.clone() }
+        let root = tree::insert(&self.root, (value, ()));
+        Set { root: Some(Rc::new(root)) }
     }
 
-    pub fn delete_min(&self) -> Option<(Set<V, C>, &V)>
+    pub fn delete_min(&self) -> Option<(Set<V>, &V)>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_min(&root);
             Some((
-                Set { root: new_root, cmp: self.cmp.clone() },
+                Set { root: new_root },
                 &v.0
             ))
         } else {
@@ -58,12 +56,12 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
         }
     }
 
-    pub fn delete_max(&self) -> Option<(Set<V, C>, &V)>
+    pub fn delete_max(&self) -> Option<(Set<V>, &V)>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_max(&root);
             Some((
-                Set { root: new_root, cmp: self.cmp.clone() },
+                Set { root: new_root },
                 &v.0
             ))
         } else {
@@ -71,19 +69,16 @@ impl<V, C> Set<V, C> where V: Clone, C: Compare<V> + Clone {
         }
     }
 
-    pub fn remove<Q: ?Sized>(&self, key: &Q) -> Option<(Set<V, C>, &V)>
-        where C: Compare<Q, V>
+    pub fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<(Set<V>, &V)>
+        where V: Borrow<Q>
     {
-        tree::remove(&self.root, key, &self.cmp).map(|(new_root, v)|
-            (Set { root: new_root, cmp: self.cmp.clone() }, &v.0)
+        tree::remove(&self.root, key).map(|(new_root, v)|
+            (Set { root: new_root }, &v.0)
         )
     }
 }
 
 impl<V: Ord> Set<V> {
-    pub fn new() -> Set<V> {
-        Set::with_comparator(natural())
-    }
 }
 
 #[cfg(test)]

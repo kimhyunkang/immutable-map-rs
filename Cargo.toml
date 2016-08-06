@@ -12,6 +12,3 @@ authors = [
 repository = "https://github.com/kimhyunkang/immutable-map-rs.git"
 keywords = ["data-structures", "functional"]
 readme = "README.md"
-
-[dependencies]
-compare = "^0.0.6"
