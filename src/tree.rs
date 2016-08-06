@@ -243,6 +243,59 @@ fn balance_right_move<K, V>(elem: (K, V),
     }
 }
 
+pub struct Iter<'r, K: 'r, V: 'r> {
+    stack: Vec<&'r TreeNode<K, V>>
+}
+
+impl<'r, K: 'r, V: 'r> Iter<'r, K, V> {
+    pub fn new(node: &'r Option<Rc<TreeNode<K, V>>>) -> Iter<'r, K, V> {
+        match *node {
+            None => Iter { stack: Vec::new() },
+            Some(ref n) => {
+                let mut stack = Vec::new();
+                let mut cursor: &'r TreeNode<K, V> = n;
+                loop {
+                    stack.push(cursor);
+                    match cursor.left {
+                        None => return Iter {
+                            stack: stack
+                        },
+                        Some(ref l) => cursor = l
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
+    type Item = &'r (K, V);
+
+    fn next(&mut self) -> Option<&'r (K, V)> {
+        let top = match self.stack.pop() {
+            None => return None,
+            Some(t) => t
+        };
+
+        let ret = &top.elem;
+
+        if let Some(ref r) = top.right {
+            let mut cursor: &'r TreeNode<K, V> = r;
+
+            loop {
+                self.stack.push(cursor);
+                if let Some(ref l) = cursor.left {
+                    cursor = l;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Some(ret)
+    }
+}
+
 #[cfg(test)]
 pub fn traverse<K, V>(node: &Option<Rc<TreeNode<K, V>>>, res: &mut Vec<(K, V)>)
     where K: Clone, V: Clone

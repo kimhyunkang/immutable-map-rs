@@ -34,6 +34,10 @@ impl<V: Ord> Set<V> {
     pub fn len(&self) -> usize {
         tree::size(&self.root)
     }
+
+    pub fn iter<'r>(&'r self) -> SetIter<'r, V> {
+        SetIter { src: tree::Iter::new(&self.root) }
+    }
 }
 
 impl<V: Ord> Set<V> where V: Clone {
@@ -78,7 +82,16 @@ impl<V: Ord> Set<V> where V: Clone {
     }
 }
 
-impl<V: Ord> Set<V> {
+pub struct SetIter<'r, V: 'r> {
+    src: tree::Iter<'r, V, ()>
+}
+
+impl<'r, V> Iterator for SetIter<'r, V> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        self.src.next().map(|p| &p.0)
+    }
 }
 
 #[cfg(test)]
@@ -176,5 +189,25 @@ mod test {
         let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
         assert_eq!(expected, res);
         assert_eq!(&7, v);
+    }
+
+    #[test]
+    fn test_iter() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let r7 = r6.insert(14);
+        let r8 = r7.insert(18);
+        let r9 = r8.insert(16);
+        let r10 = r9.insert(17);
+
+        let expected = vec![3, 4, 5, 7, 12, 14, 15, 16, 17, 18];
+        let res: Vec<usize> = r10.iter().cloned().collect();
+
+        assert_eq!(expected, res);
     }
 }
