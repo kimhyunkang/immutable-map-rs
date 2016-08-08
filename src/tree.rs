@@ -249,20 +249,23 @@ pub struct Iter<'r, K: 'r, V: 'r> {
 
 impl<'r, K: 'r, V: 'r> Iter<'r, K, V> {
     pub fn new(node: &'r Option<Rc<TreeNode<K, V>>>) -> Iter<'r, K, V> {
-        match *node {
-            None => Iter { stack: Vec::new() },
-            Some(ref n) => {
-                let mut stack = Vec::new();
-                let mut cursor: &'r TreeNode<K, V> = n;
-                loop {
-                    stack.push(cursor);
-                    match cursor.left {
-                        None => return Iter {
-                            stack: stack
-                        },
-                        Some(ref l) => cursor = l
-                    }
-                }
+        let mut iter = Iter { stack: Vec::new() };
+
+        if let Some(ref n) = *node {
+            iter.push_left(n);
+        }
+
+        iter
+    }
+
+    fn push_left(&mut self, node: &'r TreeNode<K, V>) {
+        let mut cursor = node;
+
+        loop {
+            self.stack.push(cursor);
+            match cursor.left {
+                None => break,
+                Some(ref l) => cursor = l
             }
         }
     }
@@ -280,16 +283,7 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
         let ret = &top.elem;
 
         if let Some(ref r) = top.right {
-            let mut cursor: &'r TreeNode<K, V> = r;
-
-            loop {
-                self.stack.push(cursor);
-                if let Some(ref l) = cursor.left {
-                    cursor = l;
-                } else {
-                    break;
-                }
-            }
+            self.push_left(r);
         }
 
         Some(ret)
