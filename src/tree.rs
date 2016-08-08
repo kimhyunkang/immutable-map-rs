@@ -354,17 +354,6 @@ impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
 }
 
 #[cfg(test)]
-pub fn traverse<K, V>(node: &Option<Rc<TreeNode<K, V>>>, res: &mut Vec<(K, V)>)
-    where K: Clone, V: Clone
-{
-    if let Some(ref n) = *node {
-        traverse(&n.left, res);
-        res.push(n.elem.clone());
-        traverse(&n.right, res);
-    }
-}
-
-#[cfg(test)]
 pub fn balanced<K, V>(node: &Option<Rc<TreeNode<K, V>>>) -> bool
 {
     if let Some(ref n) = *node {

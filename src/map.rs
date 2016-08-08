@@ -95,7 +95,7 @@ impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
 
 #[cfg(test)]
 mod test {
-    use tree::{traverse, balanced};
+    use tree::balanced;
     use super::Map;
 
     #[test]
@@ -118,8 +118,7 @@ mod test {
             (17, 'q'), (18, 'r')
         ];
 
-        let mut res = Vec::new();
-        traverse(&r10.root, &mut res);
+        let res: Vec<_> = r10.iter().cloned().collect();
 
         assert_eq!(expected, res);
         assert_eq!(10, r10.len());
@@ -138,9 +137,9 @@ mod test {
         let r6 = r5.insert(5, 'e');
         let (r7, v) = r6.delete_min().unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![(4, 'd'), (5, 'e'), (7, 'g'), (12, 'l'), (15, 'o')];
-        traverse(&r7.root, &mut res);
+        let res: Vec<_> = r7.iter().cloned().collect();
+
         assert_eq!(expected, res);
         assert_eq!(&(3, 'c'), v);
     }
@@ -156,9 +155,9 @@ mod test {
         let r6 = r5.insert(5, 'e');
         let (r7, v) = r6.delete_max().unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![(3, 'c'), (4, 'd'), (5, 'e'), (7, 'g'), (12, 'l')];
-        traverse(&r7.root, &mut res);
+        let res: Vec<_> = r7.iter().cloned().collect();
+
         assert_eq!(expected, res);
         assert_eq!(&(15, 'o'), v);
     }
@@ -174,9 +173,9 @@ mod test {
         let r6 = r5.insert(5, 'e');
         let (r7, v) = r6.remove(&7).unwrap();
 
-        let mut res = Vec::new();
         let expected = vec![(3, 'c'), (4, 'd'), (5, 'e'), (12, 'l'), (15, 'o')];
-        traverse(&r7.root, &mut res);
+        let res: Vec<_> = r7.iter().cloned().collect();
+
         assert_eq!(expected, res);
         assert_eq!(&(7, 'g'), v);
     }

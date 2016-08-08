@@ -108,7 +108,7 @@ impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=&'r (V, ()
 
 #[cfg(test)]
 mod test {
-    use tree::{traverse, balanced};
+    use tree::balanced;
     use super::Set;
 
     #[test]
@@ -131,9 +131,7 @@ mod test {
             (17, 'q'), (18, 'r')
         ];
 
-        let mut pairs = Vec::new();
-        traverse(&r10.root, &mut pairs);
-        let res: Vec<(usize, char)> = pairs.into_iter().map(|p| p.0).collect();
+        let res: Vec<(usize, char)> = r10.iter().cloned().collect();
 
         assert_eq!(expected, res);
         assert_eq!(10, r10.len());
@@ -154,9 +152,7 @@ mod test {
 
         let expected = vec![4, 5, 7, 12, 15];
 
-        let mut pairs = Vec::new();
-        traverse(&r7.root, &mut pairs);
-        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
+        let res: Vec<usize> = r7.iter().cloned().collect();
 
         assert_eq!(expected, res);
         assert_eq!(&3, v);
@@ -174,10 +170,7 @@ mod test {
         let (r7, v) = r6.delete_max().unwrap();
 
         let expected = vec![3, 4, 5, 7, 12];
-
-        let mut pairs = Vec::new();
-        traverse(&r7.root, &mut pairs);
-        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
+        let res: Vec<usize> = r7.iter().cloned().collect();
 
         assert_eq!(expected, res);
         assert_eq!(&15, v);
@@ -195,10 +188,8 @@ mod test {
         let (r7, v) = r6.remove(&7).unwrap();
 
         let expected = vec![3, 4, 5, 12, 15];
+        let res: Vec<usize> = r7.iter().cloned().collect();
 
-        let mut pairs = Vec::new();
-        traverse(&r7.root, &mut pairs);
-        let res:Vec<usize> = pairs.into_iter().map(|p| p.0).collect();
         assert_eq!(expected, res);
         assert_eq!(&7, v);
     }
