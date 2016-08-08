@@ -298,6 +298,61 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
     }
 }
 
+pub struct RevIter<'r, K: 'r, V: 'r> {
+    stack: Vec<&'r TreeNode<K, V>>
+}
+
+impl<'r, K: 'r, V: 'r> RevIter<'r, K, V> {
+    pub fn new(node: &'r Option<Rc<TreeNode<K, V>>>) -> RevIter<'r, K, V> {
+        let mut iter = RevIter { stack: Vec::new() };
+
+        if let Some(ref n) = *node {
+            iter.push_right(n);
+        }
+
+        iter
+    }
+
+    fn push_right(&mut self, node: &'r TreeNode<K, V>) {
+        let mut cursor = node;
+
+        loop {
+            self.stack.push(cursor);
+            match cursor.right {
+                None => break,
+                Some(ref r) => cursor = r
+            }
+        }
+    }
+}
+
+impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
+    type Item = &'r (K, V);
+
+    fn next(&mut self) -> Option<&'r (K, V)> {
+        let top = match self.stack.pop() {
+            None => return None,
+            Some(t) => t
+        };
+
+        let ret = &top.elem;
+
+        if let Some(ref r) = top.left {
+            self.push_right(r);
+        }
+
+        Some(ret)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut n = 0;
+        for node in self.stack.iter() {
+            n += size(&node.left) + 1
+        }
+        (n, Some(n))
+    }
+}
+
 #[cfg(test)]
 pub fn traverse<K, V>(node: &Option<Rc<TreeNode<K, V>>>, res: &mut Vec<(K, V)>)
     where K: Clone, V: Clone

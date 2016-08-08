@@ -9,6 +9,7 @@ pub struct Map<K, V> {
 }
 
 pub type MapIter<'r, K, V> = tree::Iter<'r, K, V>;
+pub type MapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
 
 impl<K, V> Map<K, V> where K: Ord {
     pub fn new() -> Map<K, V> {
@@ -43,6 +44,10 @@ impl<K, V> Map<K, V> where K: Ord {
 
     pub fn iter<'r>(&'r self) -> MapIter<'r, K, V> {
         tree::Iter::new(&self.root)
+    }
+
+    pub fn rev_iter<'r>(&'r self) -> MapRevIter<'r, K, V> {
+        tree::RevIter::new(&self.root)
     }
 }
 
@@ -201,6 +206,33 @@ mod test {
         assert_eq!(expected, res);
 
         assert_eq!((10, Some(10)), r10.iter().size_hint());
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let r0 = Map::new();
+        let r1 = r0.insert(4, 'd');
+        let r2 = r1.insert(7, 'g');
+        let r3 = r2.insert(12, 'l');
+        let r4 = r3.insert(15, 'o');
+        let r5 = r4.insert(3, 'c');
+        let r6 = r5.insert(5, 'e');
+        let r7 = r6.insert(14, 'n');
+        let r8 = r7.insert(18, 'r');
+        let r9 = r8.insert(16, 'p');
+        let r10 = r9.insert(17, 'q');
+
+        let expected = vec![
+            (18, 'r'), (17, 'q'),
+            (16, 'p'), (15, 'o'), (14, 'n'), (12, 'l'),
+            (7, 'g'), (5, 'e'), (4, 'd'), (3, 'c')
+        ];
+
+        let res: Vec<(usize, char)> = r10.rev_iter().cloned().collect();
+
+        assert_eq!(expected, res);
+
+        assert_eq!((10, Some(10)), r10.rev_iter().size_hint());
     }
 
     #[test]

@@ -39,8 +39,12 @@ impl<V: Ord> Set<V> {
         self.root.is_none()
     }
 
-    pub fn iter<'r>(&'r self) -> SetIter<'r, V> {
+    pub fn iter<'r>(&'r self) -> SetIter<tree::Iter<'r, V, ()>> {
         SetIter { src: tree::Iter::new(&self.root) }
+    }
+
+    pub fn rev_iter<'r>(&'r self) -> SetIter<tree::RevIter<'r, V, ()>> {
+        SetIter { src: tree::RevIter::new(&self.root) }
     }
 }
 
@@ -86,11 +90,11 @@ impl<V: Ord> Set<V> where V: Clone {
     }
 }
 
-pub struct SetIter<'r, V: 'r> {
-    src: tree::Iter<'r, V, ()>
+pub struct SetIter<I> {
+    src: I
 }
 
-impl<'r, V> Iterator for SetIter<'r, V> {
+impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=&'r (V, ())> {
     type Item = &'r V;
 
     fn next(&mut self) -> Option<&'r V> {
@@ -219,6 +223,28 @@ mod test {
         assert_eq!(expected, res);
 
         assert_eq!((10, Some(10)), r10.iter().size_hint());
+    }
+
+    #[test]
+    fn test_rev_iter() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let r7 = r6.insert(14);
+        let r8 = r7.insert(18);
+        let r9 = r8.insert(16);
+        let r10 = r9.insert(17);
+
+        let expected = vec![18, 17, 16, 15, 14, 12, 7, 5, 4, 3];
+        let res: Vec<usize> = r10.rev_iter().cloned().collect();
+
+        assert_eq!(expected, res);
+
+        assert_eq!((10, Some(10)), r10.rev_iter().size_hint());
     }
 
     #[test]
