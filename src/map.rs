@@ -245,3 +245,176 @@ mod test {
         assert!(!r2.is_empty());
     }
 }
+
+#[cfg(test)]
+mod quickcheck {
+    use super::Map;
+
+    use rand::{Rng, StdRng};
+
+    fn filter_input<K: PartialEq, V>(input: Vec<(K, V)>) -> Vec<(K, V)> {
+        let mut res: Vec<(K, V)> = Vec::new();
+
+        for (k, v) in input.into_iter() {
+            if res.iter().all(|pair| pair.0 != k) {
+                res.push((k, v));
+            }
+        }
+
+        res
+    }
+
+    fn from_list<K: Ord + Clone, V: Clone>(input: &[(K, V)]) -> Map<K, V> {
+        let mut m = Map::new();
+        for pair in input.iter() {
+            m = m.insert(pair.0.clone(), pair.1.clone());
+        }
+        m
+    }
+
+    quickcheck! {
+        fn check_length(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            m.len() == input.len()
+        }
+    }
+
+    quickcheck! {
+        fn check_is_empty(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            m.is_empty() == input.is_empty()
+        }
+    }
+
+    quickcheck! {
+        fn check_iter(xs: Vec<(isize, char)>) -> bool {
+            let mut input = filter_input(xs);
+            let m = from_list(&input);
+
+            input.sort();
+
+            let collected: Vec<(isize, char)> = m.iter().cloned().collect();
+
+            collected == input
+        }
+    }
+
+    quickcheck! {
+        fn check_iter_size_hint(xs: Vec<(isize, char)>) -> bool {
+            let mut input = filter_input(xs);
+            let m = from_list(&input);
+
+            input.sort();
+
+            let mut iter = m.iter();
+            let mut expected = m.len();
+
+            loop {
+                if iter.size_hint() != (expected, Some(expected)) {
+                    return false;
+                }
+
+                if iter.next().is_none() {
+                    return true;
+                }
+
+                expected -= 1;
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_rev_iter(xs: Vec<(isize, char)>) -> bool {
+            let mut input = filter_input(xs);
+            let m = from_list(&input);
+
+            input.sort();
+            input.reverse();
+
+            let collected: Vec<(isize, char)> = m.rev_iter().cloned().collect();
+
+            collected == input
+        }
+    }
+
+    quickcheck! {
+        fn check_get(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            input.into_iter().all(|(k, v)| m.get(&k) == Some(&v))
+        }
+    }
+
+    quickcheck! {
+        fn check_remove(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+            let mut rng = StdRng::new().unwrap();
+
+            if let Some(&(k, v)) = rng.choose(&input) {
+                if let Some((m_removed, removed_pair)) = m.remove(&k) {
+                    m_removed.len() == m.len() - 1 && removed_pair.1 == v
+                } else {
+                    false
+                }
+            } else {
+                true
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_remove_all(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let mut m = from_list(&input);
+            let mut rng = StdRng::new().unwrap();
+            let mut remove_list = input.clone();
+            rng.shuffle(&mut remove_list);
+
+            for (k, _) in remove_list.into_iter() {
+                let new_m = if let Some((m_removed, _)) = m.remove(&k) {
+                    m_removed
+                } else {
+                    return false;
+                };
+                m = new_m;
+                if m.contains_key(&k) {
+                    return false;
+                }
+            }
+
+            m.is_empty()
+        }
+    }
+
+    quickcheck! {
+        fn check_delete_min(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            if let Some((m_removed, &(k, _))) = m.delete_min() {
+                m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().min().map(|pair| pair.0)
+            } else {
+                true
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_delete_max(xs: Vec<(isize, char)>) -> bool {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            if let Some((m_removed, &(k, _))) = m.delete_max() {
+                m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().max().map(|pair| pair.0)
+            } else {
+                true
+            }
+        }
+    }
+}
