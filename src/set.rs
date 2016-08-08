@@ -92,6 +92,10 @@ impl<'r, V> Iterator for SetIter<'r, V> {
     fn next(&mut self) -> Option<&'r V> {
         self.src.next().map(|p| &p.0)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.src.size_hint()
+    }
 }
 
 #[cfg(test)]
@@ -209,5 +213,7 @@ mod test {
         let res: Vec<usize> = r10.iter().cloned().collect();
 
         assert_eq!(expected, res);
+
+        assert_eq!((10, Some(10)), r10.iter().size_hint());
     }
 }

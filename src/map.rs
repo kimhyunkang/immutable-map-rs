@@ -195,5 +195,7 @@ mod test {
         let res: Vec<(usize, char)> = r10.iter().cloned().collect();
 
         assert_eq!(expected, res);
+
+        assert_eq!((10, Some(10)), r10.iter().size_hint());
     }
 }

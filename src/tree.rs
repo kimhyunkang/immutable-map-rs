@@ -294,6 +294,14 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
 
         Some(ret)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut n = 0;
+        for node in self.stack.iter() {
+            n += size(&node.right) + 1
+        }
+        (n, Some(n))
+    }
 }
 
 #[cfg(test)]
