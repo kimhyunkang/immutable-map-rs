@@ -35,6 +35,10 @@ impl<V: Ord> Set<V> {
         tree::size(&self.root)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
+
     pub fn iter<'r>(&'r self) -> SetIter<'r, V> {
         SetIter { src: tree::Iter::new(&self.root) }
     }
@@ -215,5 +219,16 @@ mod test {
         assert_eq!(expected, res);
 
         assert_eq!((10, Some(10)), r10.iter().size_hint());
+    }
+
+    #[test]
+    fn test_is_empty() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+
+        assert!(r0.is_empty());
+        assert!(!r1.is_empty());
+        assert!(!r2.is_empty());
     }
 }
