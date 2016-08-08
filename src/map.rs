@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 use std::rc::Rc;
 
+use Bound;
+
 use tree;
 use tree::TreeNode;
 
@@ -10,6 +12,7 @@ pub struct Map<K, V> {
 
 pub type MapIter<'r, K, V> = tree::Iter<'r, K, V>;
 pub type MapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
+pub type MapRange<'r, K, V> = tree::Range<'r, K, V>;
 
 impl<K, V> Map<K, V> where K: Ord {
     pub fn new() -> Map<K, V> {
@@ -48,6 +51,12 @@ impl<K, V> Map<K, V> where K: Ord {
 
     pub fn rev_iter<'r>(&'r self) -> MapRevIter<'r, K, V> {
         tree::RevIter::new(&self.root)
+    }
+
+    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> MapRange<'r, K, V>
+        where K: Borrow<Q>
+    {
+        tree::Range::new(&self.root, min, max)
     }
 }
 
@@ -96,7 +105,9 @@ impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
 #[cfg(test)]
 mod test {
     use tree::balanced;
+
     use super::Map;
+    use Bound;
 
     #[test]
     fn test_insert() {
@@ -244,13 +255,71 @@ mod test {
         assert!(!r1.is_empty());
         assert!(!r2.is_empty());
     }
+
+    #[test]
+    fn test_range() {
+        let r0 = Map::new();
+        let r1 = r0.insert(4, 'd');
+        let r2 = r1.insert(7, 'g');
+        let r3 = r2.insert(12, 'l');
+        let r4 = r3.insert(15, 'o');
+        let r5 = r4.insert(3, 'c');
+        let r6 = r5.insert(5, 'e');
+        let r7 = r6.insert(14, 'n');
+        let r8 = r7.insert(18, 'r');
+        let r9 = r8.insert(16, 'p');
+        let r10 = r9.insert(17, 'q');
+
+        let expected = vec![(7, 'g'), (12, 'l'), (14, 'n'), (15, 'o'), (16, 'p')];
+
+        let res: Vec<(usize, char)> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                                         .cloned().collect();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_range_rev() {
+        let r0 = Map::new();
+        let r1 = r0.insert(4, 'd');
+        let r2 = r1.insert(7, 'g');
+        let r3 = r2.insert(12, 'l');
+        let r4 = r3.insert(15, 'o');
+        let r5 = r4.insert(3, 'c');
+        let r6 = r5.insert(5, 'e');
+        let r7 = r6.insert(14, 'n');
+        let r8 = r7.insert(18, 'r');
+        let r9 = r8.insert(16, 'p');
+        let r10 = r9.insert(17, 'q');
+
+        let expected = vec![(16, 'p'), (15, 'o'), (14, 'n'), (12, 'l'), (7, 'g')];
+
+        let res: Vec<(usize, char)> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                                         .rev()
+                                         .cloned().collect();
+
+        assert_eq!(expected, res);
+    }
 }
 
 #[cfg(test)]
 mod quickcheck {
-    use super::Map;
+    use map::Map;
+    use Bound;
 
+    use quickcheck::{Arbitrary, Gen};
     use rand::{Rng, StdRng};
+
+    impl<T: Arbitrary> Arbitrary for Bound<T> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Bound<T> {
+            match g.size() % 3 {
+                0 => Bound::Unbounded,
+                1 => Bound::Included(Arbitrary::arbitrary(g)),
+                2 => Bound::Excluded(Arbitrary::arbitrary(g)),
+                _ => panic!("remainder is greater than 3")
+            }
+        }
+    }
 
     fn filter_input<K: PartialEq, V>(input: Vec<(K, V)>) -> Vec<(K, V)> {
         let mut res: Vec<(K, V)> = Vec::new();
@@ -415,6 +484,110 @@ mod quickcheck {
             } else {
                 true
             }
+        }
+    }
+
+    fn match_bound<T: Ord>(x: &T, min: &Bound<T>, max: &Bound<T>) -> bool {
+        let min_match = match *min {
+            Bound::Unbounded => true,
+            Bound::Included(ref lower) => lower <= x,
+            Bound::Excluded(ref lower) => lower < x
+        };
+
+        let max_match = match *max {
+            Bound::Unbounded => true,
+            Bound::Included(ref upper) => x <= upper,
+            Bound::Excluded(ref upper) => x < upper
+        };
+
+        min_match && max_match
+    }
+
+    quickcheck! {
+        fn check_range(xs: Vec<(isize, char)>,
+                       min_bound: Bound<isize>,
+                       max_bound: Bound<isize>)
+                -> bool
+        {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            let min = match min_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let max = match max_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let res: Vec<(isize, char)> = m.range(min, max).cloned().collect();
+
+            for window in res.windows(2) {
+                let (k0, _) = window[0];
+                let (k1, _) = window[1];
+                if k0 >= k1 {
+                    return false;
+                }
+            }
+
+            for (k, _) in input.into_iter() {
+                let is_match = match_bound(&k, &min_bound, &max_bound);
+                let is_res = res.iter().any(|pair| pair.0 == k);
+
+                if is_match != is_res {
+                    return false;
+                }
+            }
+
+            true
+        }
+    }
+
+    quickcheck! {
+        fn check_range_rev(xs: Vec<(isize, char)>,
+                           min_bound: Bound<isize>,
+                           max_bound: Bound<isize>)
+                -> bool
+        {
+            let input = filter_input(xs);
+            let m = from_list(&input);
+
+            let min = match min_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let max = match max_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let res: Vec<(isize, char)> = m.range(min, max).rev().cloned().collect();
+
+            for window in res.windows(2) {
+                let (k0, _) = window[0];
+                let (k1, _) = window[1];
+                if k0 <= k1 {
+                    return false;
+                }
+            }
+
+            for (k, _) in input.into_iter() {
+                let is_match = match_bound(&k, &min_bound, &max_bound);
+                let is_res = res.iter().any(|pair| pair.0 == k);
+
+                if is_match != is_res {
+                    return false;
+                }
+            }
+
+            true
         }
     }
 }

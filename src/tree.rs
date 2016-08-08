@@ -2,10 +2,12 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
+use Bound;
+
 static DELTA: usize = 3;
 static GAMMA: usize = 2;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TreeNode<K, V> {
     size: usize,
     elem: (K, V),
@@ -350,6 +352,206 @@ impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
             n += size(&node.left) + 1
         }
         (n, Some(n))
+    }
+}
+
+#[derive(Debug)]
+pub struct Range<'r, K: 'r, V: 'r> {
+    stack: Vec<&'r TreeNode<K, V>>,
+    rev_stack: Vec<&'r TreeNode<K, V>>
+}
+
+impl<'r, K: Ord + 'r, V: 'r> Range<'r, K, V> {
+    pub fn new<Q>(node: &'r Option<Rc<TreeNode<K, V>>>,
+                  min: Bound<&Q>, max: Bound<&Q>)
+            -> Range<'r, K, V>
+        where Q: Ord, K: Borrow<Q>
+    {
+        let mut iter = Range { stack: Vec::new(), rev_stack: Vec::new() };
+
+        if let Some(ref n) = *node {
+            match min {
+                Bound::Unbounded => iter.left_edge(n),
+                Bound::Excluded(lower) => iter.left_edge_gt(n, lower),
+                Bound::Included(lower) => iter.left_edge_ge(n, lower)
+            }
+
+            match max {
+                Bound::Unbounded => iter.right_edge(n),
+                Bound::Excluded(upper) => iter.right_edge_lt(n, upper),
+                Bound::Included(upper) => iter.right_edge_le(n, upper)
+            }
+        }
+
+        iter
+    }
+
+    fn left_edge(&mut self, node: &'r TreeNode<K, V>) {
+        let mut cursor = node;
+
+        loop {
+            self.stack.push(cursor);
+            match cursor.left {
+                None => break,
+                Some(ref l) => cursor = l
+            }
+        }
+    }
+
+    fn left_edge_gt<Q: Ord>(&mut self, node: &'r TreeNode<K, V>, key: &Q)
+        where K: Borrow<Q>
+    {
+        let mut cursor = node;
+
+        loop {
+            if cursor.elem.0.borrow() > key {
+                self.stack.push(cursor);
+                match cursor.left {
+                    None => break,
+                    Some(ref l) => cursor = l
+                }
+            } else if let Some(ref r) = cursor.right {
+                cursor = r;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn left_edge_ge<Q: Ord>(&mut self, node: &'r TreeNode<K, V>, key: &Q)
+        where K: Borrow<Q>
+    {
+        let mut cursor = node;
+
+        loop {
+            match cursor.elem.0.borrow().cmp(key) {
+                Ordering::Less => match cursor.right {
+                    None => break,
+                    Some(ref r) => cursor = r
+                },
+                Ordering::Equal => {
+                    self.stack.push(cursor);
+                    break;
+                },
+                Ordering::Greater => {
+                    self.stack.push(cursor);
+                    match cursor.left {
+                        None => break,
+                        Some(ref l) => cursor = l
+                    }
+                }
+            }
+        }
+    }
+
+    fn right_edge(&mut self, node: &'r TreeNode<K, V>) {
+        let mut cursor = node;
+
+        loop {
+            self.rev_stack.push(cursor);
+            match cursor.right {
+                None => break,
+                Some(ref r) => cursor = r
+            }
+        }
+    }
+
+    fn right_edge_lt<Q: Ord>(&mut self, node: &'r TreeNode<K, V>, key: &Q)
+        where K: Borrow<Q>
+    {
+        let mut cursor = node;
+
+        loop {
+            if cursor.elem.0.borrow() < key {
+                self.rev_stack.push(cursor);
+                match cursor.right {
+                    None => break,
+                    Some(ref r) => cursor = r
+                }
+            } else if let Some(ref l) = cursor.left {
+                cursor = l;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn right_edge_le<Q: Ord>(&mut self, node: &'r TreeNode<K, V>, key: &Q)
+        where K: Borrow<Q>
+    {
+        let mut cursor = node;
+
+        loop {
+            match cursor.elem.0.borrow().cmp(key) {
+                Ordering::Less => {
+                    self.rev_stack.push(cursor);
+                    match cursor.right {
+                        None => break,
+                        Some(ref r) => cursor = r
+                    }
+                },
+                Ordering::Equal => {
+                    self.rev_stack.push(cursor);
+                    break;
+                },
+                Ordering::Greater => match cursor.left {
+                    None => break,
+                    Some(ref l) => cursor = l
+                }
+            }
+        }
+    }
+}
+
+impl<'r, K: Ord + 'r, V: 'r> Iterator for Range<'r, K, V> {
+    type Item = &'r (K, V);
+
+    fn next(&mut self) -> Option<&'r (K, V)> {
+        let top = match self.stack.pop() {
+            None => return None,
+            Some(t) => t
+        };
+
+        let ret = &top.elem;
+
+        if let Some(rev_top) = self.rev_stack.last() {
+            if rev_top.elem.0 < ret.0 {
+                return None;
+            }
+        } else {
+            return None;
+        }
+
+        if let Some(ref r) = top.right {
+            self.left_edge(r);
+        }
+
+        Some(ret)
+    }
+}
+
+impl<'r, K: Ord + 'r, V: 'r> DoubleEndedIterator for Range<'r, K, V> {
+    fn next_back(&mut self) -> Option<&'r (K, V)> {
+        let top = match self.rev_stack.pop() {
+            None => return None,
+            Some(t) => t
+        };
+
+        let ret = &top.elem;
+
+        if let Some(rev_top) = self.stack.last() {
+            if ret.0 < rev_top.elem.0 {
+                return None;
+            }
+        } else {
+            return None;
+        }
+
+        if let Some(ref r) = top.left {
+            self.right_edge(r);
+        }
+
+        Some(ret)
     }
 }
 

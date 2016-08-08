@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use tree;
 use tree::TreeNode;
+use Bound;
 
 pub struct Set<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
@@ -45,6 +46,13 @@ impl<V: Ord> Set<V> {
 
     pub fn rev_iter<'r>(&'r self) -> SetIter<tree::RevIter<'r, V, ()>> {
         SetIter { src: tree::RevIter::new(&self.root) }
+    }
+
+    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
+            -> SetIter<tree::Range<'r, V, ()>>
+        where V: Borrow<Q>
+    {
+        SetIter { src: tree::Range::new(&self.root, min, max) }
     }
 }
 
@@ -106,9 +114,19 @@ impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=&'r (V, ()
     }
 }
 
+impl<'r, I: 'r, V: 'r> DoubleEndedIterator for SetIter<I>
+    where I: DoubleEndedIterator<Item=&'r (V, ())>
+{
+    fn next_back(&mut self) -> Option<&'r V> {
+        self.src.next_back().map(|p| &p.0)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use tree::balanced;
+    use Bound;
+
     use super::Set;
 
     #[test]
@@ -247,5 +265,50 @@ mod test {
         assert!(r0.is_empty());
         assert!(!r1.is_empty());
         assert!(!r2.is_empty());
+    }
+
+    #[test]
+    fn test_range() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let r7 = r6.insert(14);
+        let r8 = r7.insert(18);
+        let r9 = r8.insert(16);
+        let r10 = r9.insert(17);
+
+        let expected = vec![7, 12, 14, 15, 16];
+
+        let res: Vec<usize> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                                 .cloned().collect();
+
+        assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_range_rev() {
+        let r0 = Set::new();
+        let r1 = r0.insert(4);
+        let r2 = r1.insert(7);
+        let r3 = r2.insert(12);
+        let r4 = r3.insert(15);
+        let r5 = r4.insert(3);
+        let r6 = r5.insert(5);
+        let r7 = r6.insert(14);
+        let r8 = r7.insert(18);
+        let r9 = r8.insert(16);
+        let r10 = r9.insert(17);
+
+        let expected = vec![16, 15, 14, 12, 7];
+
+        let res: Vec<usize> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                                 .rev()
+                                 .cloned().collect();
+
+        assert_eq!(expected, res);
     }
 }
