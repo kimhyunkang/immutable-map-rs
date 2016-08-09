@@ -505,7 +505,7 @@ mod quickcheck {
             let mut remove_list = input.clone();
             rng.shuffle(&mut remove_list);
 
-            for (k, _) in remove_list.into_iter() {
+            for (k, _) in remove_list {
                 let new_m = if let Some((m_removed, _)) = m.remove(&k) {
                     m_removed
                 } else {
@@ -594,7 +594,7 @@ mod quickcheck {
                 }
             }
 
-            for (k, _) in input.into_iter() {
+            for (k, _) in input {
                 let is_match = match_bound(&k, &min_bound, &max_bound);
                 let is_res = res.iter().any(|pair| pair.0 == k);
 
@@ -638,7 +638,7 @@ mod quickcheck {
                 }
             }
 
-            for (k, _) in input.into_iter() {
+            for (k, _) in input {
                 let is_match = match_bound(&k, &min_bound, &max_bound);
                 let is_res = res.iter().any(|pair| pair.0 == k);
 
