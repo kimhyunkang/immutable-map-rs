@@ -46,6 +46,13 @@ impl<V: Ord> Set<V> {
             b: tree::Iter::new(&other.root).peekable()
         }
     }
+
+    pub fn union<'r>(&'r self, other: &'r Set<V>) -> Union<'r, V> {
+        Union {
+            a: tree::Iter::new(&self.root).peekable(),
+            b: tree::Iter::new(&other.root).peekable()
+        }
+    }
 }
 
 impl<V> Set<V> {
@@ -208,6 +215,38 @@ impl<'r, V: Ord + 'r> Iterator for Intersection<'r, V> {
                 },
                 Ordering::Greater => {
                     self.b.next();
+                }
+            }
+        }
+    }
+}
+
+pub struct Union<'r, V: 'r> {
+    a: Peekable<tree::Iter<'r, V, ()>>,
+    b: Peekable<tree::Iter<'r, V, ()>>
+}
+
+impl <'r, V: Ord + 'r> Iterator for Union<'r, V> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        loop {
+            let cmp = match (self.a.peek(), self.b.peek()) {
+                (_, None) => Ordering::Less,
+                (None, _) => Ordering::Greater,
+                (Some(a), Some(b)) => a.cmp(b)
+            };
+
+            match cmp {
+                Ordering::Less => {
+                    return self.a.next().map(|pair| pair.0);
+                },
+                Ordering::Equal => {
+                    self.b.next();
+                    return self.a.next().map(|pair| pair.0);
+                },
+                Ordering::Greater => {
+                    return self.b.next().map(|pair| pair.0);
                 }
             }
         }
@@ -749,6 +788,29 @@ mod quickcheck {
             let res: Vec<isize> = x_set.intersection(&y_set).cloned().collect();
 
             res == intersection
+        }
+    }
+
+    quickcheck! {
+        fn check_union(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let mut union = xs.clone();
+            for y in &ys {
+                if !union.contains(y) {
+                    union.push(*y);
+                }
+            }
+
+            union.sort();
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            let res: Vec<isize> = x_set.union(&y_set).cloned().collect();
+
+            res == union
         }
     }
 }
