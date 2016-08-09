@@ -18,10 +18,6 @@ pub type MapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
 pub type MapRange<'r, K, V> = tree::Range<'r, K, V>;
 
 impl<K, V> Map<K, V> where K: Ord {
-    pub fn new() -> Map<K, V> {
-        Map { root: None }
-    }
-
     pub fn get<Q: ?Sized + Ord>(&self, key: &Q) -> Option<&V>
         where K: Borrow<Q>
     {
@@ -40,14 +36,6 @@ impl<K, V> Map<K, V> where K: Ord {
         self.get(key).is_some()
     }
 
-    pub fn len(&self) -> usize {
-        tree::size(&self.root)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.root.is_none()
-    }
-
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> MapRange<'r, K, V>
         where K: Borrow<Q>
     {
@@ -56,6 +44,18 @@ impl<K, V> Map<K, V> where K: Ord {
 }
 
 impl<K, V> Map<K, V> {
+    pub fn new() -> Map<K, V> {
+        Map { root: None }
+    }
+
+    pub fn len(&self) -> usize {
+        tree::size(&self.root)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
+
     pub fn iter<'r>(&'r self) -> MapIter<'r, K, V> {
         tree::Iter::new(&self.root)
     }

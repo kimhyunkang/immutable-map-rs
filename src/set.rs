@@ -13,10 +13,6 @@ pub struct Set<V> {
 }
 
 impl<V: Ord> Set<V> {
-    pub fn new() -> Set<V> {
-        Set { root: None }
-    }
-
     pub fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<&V>
         where V: Borrow<Q>
     {
@@ -35,14 +31,6 @@ impl<V: Ord> Set<V> {
         self.get(key).is_some()
     }
 
-    pub fn len(&self) -> usize {
-        tree::size(&self.root)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.root.is_none()
-    }
-
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
             -> SetIter<tree::Range<'r, V, ()>>
         where V: Borrow<Q>
@@ -52,6 +40,18 @@ impl<V: Ord> Set<V> {
 }
 
 impl<V> Set<V> {
+    pub fn new() -> Set<V> {
+        Set { root: None }
+    }
+
+    pub fn len(&self) -> usize {
+        tree::size(&self.root)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
+
     pub fn iter<'r>(&'r self) -> SetIter<tree::Iter<'r, V, ()>> {
         SetIter { src: tree::Iter::new(&self.root) }
     }
