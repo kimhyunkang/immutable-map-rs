@@ -43,19 +43,21 @@ impl<V: Ord> Set<V> {
         self.root.is_none()
     }
 
+    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
+            -> SetIter<tree::Range<'r, V, ()>>
+        where V: Borrow<Q>
+    {
+        SetIter { src: tree::Range::new(&self.root, min, max) }
+    }
+}
+
+impl<V> Set<V> {
     pub fn iter<'r>(&'r self) -> SetIter<tree::Iter<'r, V, ()>> {
         SetIter { src: tree::Iter::new(&self.root) }
     }
 
     pub fn rev_iter<'r>(&'r self) -> SetIter<tree::RevIter<'r, V, ()>> {
         SetIter { src: tree::RevIter::new(&self.root) }
-    }
-
-    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
-            -> SetIter<tree::Range<'r, V, ()>>
-        where V: Borrow<Q>
-    {
-        SetIter { src: tree::Range::new(&self.root, min, max) }
     }
 }
 

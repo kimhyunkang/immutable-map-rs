@@ -48,18 +48,20 @@ impl<K, V> Map<K, V> where K: Ord {
         self.root.is_none()
     }
 
+    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> MapRange<'r, K, V>
+        where K: Borrow<Q>
+    {
+        tree::Range::new(&self.root, min, max)
+    }
+}
+
+impl<K, V> Map<K, V> {
     pub fn iter<'r>(&'r self) -> MapIter<'r, K, V> {
         tree::Iter::new(&self.root)
     }
 
     pub fn rev_iter<'r>(&'r self) -> MapRevIter<'r, K, V> {
         tree::RevIter::new(&self.root)
-    }
-
-    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> MapRange<'r, K, V>
-        where K: Borrow<Q>
-    {
-        tree::Range::new(&self.root, min, max)
     }
 }
 
