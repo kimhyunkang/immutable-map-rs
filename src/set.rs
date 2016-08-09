@@ -67,6 +67,10 @@ impl<V: Ord> Set<V> {
             b: tree::Iter::new(&other.root).peekable()
         }
     }
+
+    pub fn is_disjoint(&self, other: &Set<V>) -> bool {
+        self.intersection(other).next().is_none()
+    }
 }
 
 impl<V> Set<V> {
@@ -941,6 +945,25 @@ mod quickcheck {
             let res: Vec<isize> = x_set.symmetric_difference(&y_set).cloned().collect();
 
             res == symm_diff
+        }
+    }
+
+    quickcheck! {
+        fn check_is_disjoint(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let mut disjoint = true;
+            for x in &xs {
+                if ys.contains(x) {
+                    disjoint = false;
+                }
+            }
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            disjoint == x_set.is_disjoint(&y_set)
         }
     }
 }
