@@ -34,10 +34,10 @@ impl<V: Ord> Set<V> {
     }
 
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
-            -> SetIter<tree::Range<'r, V, ()>>
+            -> tree::Keys<tree::Range<'r, V, ()>>
         where V: Borrow<Q>
     {
-        SetIter { src: tree::Range::new(&self.root, min, max) }
+        tree::Keys::new(tree::Range::new(&self.root, min, max))
     }
 
     pub fn intersection<'r>(&'r self, other: &'r Set<V>) -> Intersection<'r, V> {
@@ -94,12 +94,12 @@ impl<V> Set<V> {
         self.root.is_none()
     }
 
-    pub fn iter<'r>(&'r self) -> SetIter<tree::Iter<'r, V, ()>> {
-        SetIter { src: tree::Iter::new(&self.root) }
+    pub fn iter<'r>(&'r self) -> tree::Keys<tree::Iter<'r, V, ()>> {
+        tree::Keys::new(tree::Iter::new(&self.root))
     }
 
-    pub fn rev_iter<'r>(&'r self) -> SetIter<tree::RevIter<'r, V, ()>> {
-        SetIter { src: tree::RevIter::new(&self.root) }
+    pub fn rev_iter<'r>(&'r self) -> tree::Keys<tree::RevIter<'r, V, ()>> {
+        tree::Keys::new(tree::RevIter::new(&self.root))
     }
 }
 
@@ -151,35 +151,11 @@ impl<V: Debug + Ord> Debug for Set<V> {
     }
 }
 
-pub struct SetIter<I> {
-    src: I
-}
-
-impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=(&'r V, &'r ())> {
-    type Item = &'r V;
-
-    fn next(&mut self) -> Option<&'r V> {
-        self.src.next().map(|p| p.0)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.src.size_hint()
-    }
-}
-
-impl<'r, I: 'r, V: 'r> DoubleEndedIterator for SetIter<I>
-    where I: DoubleEndedIterator<Item=(&'r V, &'r ())>
-{
-    fn next_back(&mut self) -> Option<&'r V> {
-        self.src.next_back().map(|p| p.0)
-    }
-}
-
 impl<'r, V: Ord> IntoIterator for &'r Set<V> {
     type Item = &'r V;
-    type IntoIter = SetIter<tree::Iter<'r, V, ()>>;
+    type IntoIter = tree::Keys<tree::Iter<'r, V, ()>>;
 
-    fn into_iter(self) -> SetIter<tree::Iter<'r, V, ()>> {
+    fn into_iter(self) -> tree::Keys<tree::Iter<'r, V, ()>> {
         self.iter()
     }
 }

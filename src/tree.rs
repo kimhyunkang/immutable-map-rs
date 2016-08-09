@@ -361,6 +361,66 @@ pub struct Range<'r, K: 'r, V: 'r> {
     rev_stack: Vec<&'r TreeNode<K, V>>
 }
 
+pub struct Keys<I> {
+    src: I
+}
+
+impl<I> Keys<I> {
+    pub fn new(src: I) -> Keys<I> {
+        Keys { src: src }
+    }
+}
+
+impl<'r, I: 'r, K: 'r, V: 'r> Iterator for Keys<I> where I: Iterator<Item=(&'r K, &'r V)> {
+    type Item = &'r K;
+
+    fn next(&mut self) -> Option<&'r K> {
+        self.src.next().map(|p| p.0)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.src.size_hint()
+    }
+}
+
+impl<'r, I: 'r, K: 'r, V: 'r> DoubleEndedIterator for Keys<I>
+    where I: DoubleEndedIterator<Item=(&'r K, &'r V)>
+{
+    fn next_back(&mut self) -> Option<&'r K> {
+        self.src.next_back().map(|p| p.0)
+    }
+}
+
+pub struct Values<I> {
+    src: I
+}
+
+impl<I> Values<I> {
+    pub fn new(src: I) -> Values<I> {
+        Values { src: src }
+    }
+}
+
+impl<'r, I: 'r, K: 'r, V: 'r> Iterator for Values<I> where I: Iterator<Item=(&'r K, &'r V)> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        self.src.next().map(|p| p.1)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.src.size_hint()
+    }
+}
+
+impl<'r, I: 'r, K: 'r, V: 'r> DoubleEndedIterator for Values<I>
+    where I: DoubleEndedIterator<Item=(&'r K, &'r V)>
+{
+    fn next_back(&mut self) -> Option<&'r V> {
+        self.src.next_back().map(|p| p.1)
+    }
+}
+
 impl<'r, K: Ord + 'r, V: 'r> Range<'r, K, V> {
     pub fn new<Q>(node: &'r Option<Rc<TreeNode<K, V>>>,
                   min: Bound<&Q>, max: Bound<&Q>)

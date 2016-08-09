@@ -66,6 +66,14 @@ impl<K, V> Map<K, V> {
     pub fn rev_iter<'r>(&'r self) -> MapRevIter<'r, K, V> {
         tree::RevIter::new(&self.root)
     }
+
+    pub fn keys<'r>(&'r self) -> tree::Keys<MapIter<'r, K, V>> {
+        tree::Keys::new(tree::Iter::new(&self.root))
+    }
+
+    pub fn values<'r>(&'r self) -> tree::Values<MapIter<'r, K, V>> {
+        tree::Values::new(tree::Iter::new(&self.root))
+    }
 }
 
 impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
@@ -682,6 +690,37 @@ mod quickcheck {
             let m1: Map<isize, char> = input1.into_iter().collect();
 
             TestResult::from_bool(m0 != m1)
+        }
+    }
+
+    quickcheck! {
+        fn check_keys(xs: Vec<(isize, char)>) -> bool
+        {
+            let input = filter_input(xs);
+            let mut expected: Vec<isize> = input.iter().map(|pair| pair.0).collect();
+
+            let m: Map<isize, char> = input.into_iter().collect();
+            expected.sort();
+
+            let keys: Vec<isize> = m.keys().cloned().collect();
+
+            expected == keys
+        }
+    }
+
+    quickcheck! {
+        fn check_values(xs: Vec<(isize, char)>) -> bool
+        {
+            let input = filter_input(xs);
+            let mut sorted_input = input.clone();
+            sorted_input.sort();
+            let expected: Vec<char> = sorted_input.into_iter().map(|pair| pair.1).collect();
+
+            let m: Map<isize, char> = input.into_iter().collect();
+
+            let values: Vec<char> = m.values().cloned().collect();
+
+            expected == values
         }
     }
 }

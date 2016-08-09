@@ -4,7 +4,7 @@ extern crate immutable_map;
 extern crate rand;
 extern crate test;
 
-use immutable_map::Map;
+use immutable_map::{Map, Set};
 use rand::{Rng, IsaacRng};
 use test::Bencher;
 
@@ -103,5 +103,35 @@ fn iter_large(b: &mut Bencher) {
 
     b.iter(|| {
         map.iter().count();
+    })
+}
+
+#[bench]
+fn set_iter_small(b: &mut Bencher) {
+    let mut rng = IsaacRng::new_unseeded();
+    let mut set = Set::new();
+
+    for _ in 0 .. 10 {
+        let k = rng.gen::<u16>() as usize;
+        set = set.insert(k);
+    }
+
+    b.iter(|| {
+        set.iter().count();
+    })
+}
+
+#[bench]
+fn set_iter_large(b: &mut Bencher) {
+    let mut rng = IsaacRng::new_unseeded();
+    let mut set = Set::new();
+
+    for _ in 0 .. 1000 {
+        let k = rng.gen::<u16>() as usize;
+        set = set.insert(k);
+    }
+
+    b.iter(|| {
+        set.iter().count();
     })
 }
