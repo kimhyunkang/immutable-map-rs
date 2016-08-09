@@ -142,6 +142,15 @@ impl<'r, V: Ord> IntoIterator for &'r Set<V> {
     }
 }
 
+impl <V: PartialEq> PartialEq for Set<V> {
+    fn eq(&self, other: &Set<V>) -> bool {
+        self.len() == other.len()
+            && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+}
+
+impl <V: Eq> Eq for Set<V> {}
+
 #[cfg(test)]
 mod test {
     use tree::balanced;
@@ -339,5 +348,21 @@ mod test {
         let r2 = r1.insert(4);
 
         assert_eq!("{4, 7}", &format!("{:?}", r2));
+    }
+
+    #[test]
+    fn test_eq() {
+        let a = Set::new().insert(3).insert(1).insert(2);
+        let b = Set::new().insert(2).insert(3).insert(1).insert(2);
+
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_neq() {
+        let a = Set::new().insert(3).insert(1).insert(2);
+        let b = Set::new().insert(2).insert(4).insert(1);
+
+        assert!(a != b);
     }
 }

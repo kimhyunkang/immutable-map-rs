@@ -122,6 +122,13 @@ impl<'r, K: Ord, V> IntoIterator for &'r Map<K, V> {
     }
 }
 
+impl<K: PartialEq, V: PartialEq> PartialEq for Map<K, V> {
+    fn eq(&self, other: &Map<K, V>) -> bool {
+        self.len() == other.len()
+            && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use tree::balanced;
@@ -338,7 +345,7 @@ mod quickcheck {
     use map::Map;
     use Bound;
 
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult};
     use rand::{Rng, StdRng};
 
     impl<T: Arbitrary> Arbitrary for Bound<T> {
@@ -451,19 +458,23 @@ mod quickcheck {
     }
 
     quickcheck! {
-        fn check_remove(xs: Vec<(isize, char)>) -> bool {
+        fn check_remove(xs: Vec<(isize, char)>) -> TestResult {
+            if xs.is_empty() {
+                return TestResult::discard();
+            }
+
             let input = filter_input(xs);
             let m = from_list(&input);
             let mut rng = StdRng::new().unwrap();
 
-            if let Some(&(k, v)) = rng.choose(&input) {
-                if let Some((m_removed, removed_pair)) = m.remove(&k) {
+            let &(k, v) = rng.choose(&input).unwrap();
+
+            if let Some((m_removed, removed_pair)) = m.remove(&k) {
+                TestResult::from_bool(
                     m_removed.len() == m.len() - 1 && removed_pair.1 == v
-                } else {
-                    false
-                }
+                )
             } else {
-                true
+                TestResult::failed()
             }
         }
     }
@@ -619,6 +630,54 @@ mod quickcheck {
             }
 
             true
+        }
+    }
+
+    quickcheck! {
+        fn check_eq(xs: Vec<(isize, char)>) -> bool
+        {
+            let mut rng = StdRng::new().unwrap();
+            let input0 = filter_input(xs);
+            let mut input1 = input0.clone();
+            rng.shuffle(&mut input1);
+
+            let mut m0 = Map::new();
+            for (k, v) in input0 {
+                m0 = m0.insert(k, v);
+            }
+
+            let mut m1 = Map::new();
+            for (k, v) in input1 {
+                m1 = m1.insert(k, v);
+            }
+
+            m0 == m1
+        }
+    }
+
+    quickcheck! {
+        fn check_neq(xs: Vec<(isize, char)>) -> TestResult
+        {
+            if xs.is_empty() {
+                return TestResult::discard();
+            }
+            let mut rng = StdRng::new().unwrap();
+            let input0 = filter_input(xs);
+            let mut input1 = input0.clone();
+            rng.shuffle(&mut input1);
+            input1.pop();
+
+            let mut m0 = Map::new();
+            for (k, v) in input0 {
+                m0 = m0.insert(k, v);
+            }
+
+            let mut m1 = Map::new();
+            for (k, v) in input1 {
+                m1 = m1.insert(k, v);
+            }
+
+            TestResult::from_bool(m0 != m1)
         }
     }
 }
