@@ -75,6 +75,10 @@ impl<V: Ord> Set<V> {
     pub fn is_subset(&self, other: &Set<V>) -> bool {
         self.difference(other).next().is_none()
     }
+
+    pub fn is_superset(&self, other: &Set<V>) -> bool {
+        other.difference(self).next().is_none()
+    }
 }
 
 impl<V> Set<V> {
@@ -859,12 +863,7 @@ mod quickcheck {
             let xs = filter_input(input0);
             let ys = filter_input(input1);
 
-            let mut intersection = Vec::new();
-            for x in &xs {
-                if ys.contains(x) {
-                    intersection.push(*x);
-                }
-            }
+            let mut intersection: Vec<_> = xs.iter().filter(|x| ys.contains(x)).cloned().collect();
 
             intersection.sort();
 
@@ -972,6 +971,20 @@ mod quickcheck {
             let y_set: Set<isize> = ys.into_iter().collect();
 
             is_subset == x_set.is_subset(&y_set)
+        }
+    }
+
+    quickcheck! {
+        fn check_is_superset(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let is_superset = ys.iter().all(|y| xs.contains(y));
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            is_superset == x_set.is_superset(&y_set)
         }
     }
 }
