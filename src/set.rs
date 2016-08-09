@@ -53,6 +53,13 @@ impl<V: Ord> Set<V> {
             b: tree::Iter::new(&other.root).peekable()
         }
     }
+
+    pub fn difference<'r>(&'r self, other: &'r Set<V>) -> Difference<'r, V> {
+        Difference {
+            a: tree::Iter::new(&self.root).peekable(),
+            b: tree::Iter::new(&other.root).peekable()
+        }
+    }
 }
 
 impl<V> Set<V> {
@@ -247,6 +254,38 @@ impl <'r, V: Ord + 'r> Iterator for Union<'r, V> {
                 },
                 Ordering::Greater => {
                     return self.b.next().map(|pair| pair.0);
+                }
+            }
+        }
+    }
+}
+
+pub struct Difference<'r, V: 'r> {
+    a: Peekable<tree::Iter<'r, V, ()>>,
+    b: Peekable<tree::Iter<'r, V, ()>>
+}
+
+impl<'r, V: Ord + 'r> Iterator for Difference<'r, V> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        loop {
+            let cmp = match (self.a.peek(), self.b.peek()) {
+                (_, None) => Ordering::Less,
+                (None, _) => return None,
+                (Some(a), Some(b)) => a.cmp(b)
+            };
+
+            match cmp {
+                Ordering::Less => {
+                    return self.a.next().map(|pair| pair.0);
+                },
+                Ordering::Equal => {
+                    self.a.next();
+                    self.b.next();
+                },
+                Ordering::Greater => {
+                    self.b.next();
                 }
             }
         }
@@ -811,6 +850,29 @@ mod quickcheck {
             let res: Vec<isize> = x_set.union(&y_set).cloned().collect();
 
             res == union
+        }
+    }
+
+    quickcheck! {
+        fn check_difference(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let mut difference = Vec::new();
+            for x in &xs {
+                if !ys.contains(x) {
+                    difference.push(*x);
+                }
+            }
+
+            difference.sort();
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            let res: Vec<isize> = x_set.difference(&y_set).cloned().collect();
+
+            res == difference
         }
     }
 }
