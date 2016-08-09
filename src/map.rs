@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 use std::ops::Index;
 use std::rc::Rc;
 
@@ -152,6 +153,16 @@ impl <'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for Map<K, V>
 
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
+    }
+}
+
+impl <K: Ord + Clone, V: Clone> FromIterator<(K, V)> for Map<K, V> {
+    fn from_iter<T>(iter: T) -> Map<K, V> where T: IntoIterator<Item=(K, V)> {
+        let mut m = Map::new();
+        for (k, v) in iter {
+            m = m.insert(k, v);
+        }
+        m
     }
 }
 

@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 use std::rc::Rc;
 
 use tree;
@@ -161,6 +162,16 @@ impl <V: PartialOrd> PartialOrd for Set<V> {
 impl <V: Ord> Ord for Set<V> {
     fn cmp(&self, other: &Set<V>) -> Ordering {
         self.iter().cmp(other.iter())
+    }
+}
+
+impl <V: Ord + Clone> FromIterator<V> for Set<V> {
+    fn from_iter<T>(iter: T) -> Set<V> where T: IntoIterator<Item=V> {
+        let mut s = Set::new();
+        for v in iter {
+            s = s.insert(v);
+        }
+        s
     }
 }
 
