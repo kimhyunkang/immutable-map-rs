@@ -111,6 +111,15 @@ impl<K: Debug + Ord, V: Debug> Debug for Map<K, V> {
     }
 }
 
+impl<'r, K: Ord, V> IntoIterator for &'r Map<K, V> {
+    type Item = (&'r K, &'r V);
+    type IntoIter = MapIter<'r, K, V>;
+
+    fn into_iter(self) -> MapIter<'r, K, V> {
+        self.iter()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use tree::balanced;

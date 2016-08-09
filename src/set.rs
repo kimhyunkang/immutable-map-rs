@@ -131,6 +131,15 @@ impl<'r, I: 'r, V: 'r> DoubleEndedIterator for SetIter<I>
     }
 }
 
+impl<'r, V: Ord> IntoIterator for &'r Set<V> {
+    type Item = &'r V;
+    type IntoIter = SetIter<tree::Iter<'r, V, ()>>;
+
+    fn into_iter(self) -> SetIter<tree::Iter<'r, V, ()>> {
+        self.iter()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use tree::balanced;
