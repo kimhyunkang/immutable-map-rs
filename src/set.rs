@@ -60,6 +60,13 @@ impl<V: Ord> Set<V> {
             b: tree::Iter::new(&other.root).peekable()
         }
     }
+
+    pub fn symmetric_difference<'r>(&'r self, other: &'r Set<V>) -> SymmetricDifference<'r, V> {
+        SymmetricDifference {
+            a: tree::Iter::new(&self.root).peekable(),
+            b: tree::Iter::new(&other.root).peekable()
+        }
+    }
 }
 
 impl<V> Set<V> {
@@ -286,6 +293,38 @@ impl<'r, V: Ord + 'r> Iterator for Difference<'r, V> {
                 },
                 Ordering::Greater => {
                     self.b.next();
+                }
+            }
+        }
+    }
+}
+
+pub struct SymmetricDifference<'r, V: 'r> {
+    a: Peekable<tree::Iter<'r, V, ()>>,
+    b: Peekable<tree::Iter<'r, V, ()>>
+}
+
+impl<'r, V: Ord + 'r> Iterator for SymmetricDifference<'r, V> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        loop {
+            let cmp = match (self.a.peek(), self.b.peek()) {
+                (_, None) => Ordering::Less,
+                (None, _) => Ordering::Greater,
+                (Some(a), Some(b)) => a.cmp(b)
+            };
+
+            match cmp {
+                Ordering::Less => {
+                    return self.a.next().map(|pair| pair.0);
+                },
+                Ordering::Equal => {
+                    self.a.next();
+                    self.b.next();
+                },
+                Ordering::Greater => {
+                    return self.b.next().map(|pair| pair.0);
                 }
             }
         }
@@ -873,6 +912,35 @@ mod quickcheck {
             let res: Vec<isize> = x_set.difference(&y_set).cloned().collect();
 
             res == difference
+        }
+    }
+
+    quickcheck! {
+        fn check_symmetric_difference(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let mut symm_diff = Vec::new();
+            for x in &xs {
+                if !ys.contains(x) {
+                    symm_diff.push(*x);
+                }
+            }
+
+            for y in &ys {
+                if !xs.contains(y) {
+                    symm_diff.push(*y);
+                }
+            }
+
+            symm_diff.sort();
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            let res: Vec<isize> = x_set.symmetric_difference(&y_set).cloned().collect();
+
+            res == symm_diff
         }
     }
 }
