@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -126,6 +127,20 @@ impl<K: PartialEq, V: PartialEq> PartialEq for Map<K, V> {
     fn eq(&self, other: &Map<K, V>) -> bool {
         self.len() == other.len()
             && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+}
+
+impl<K: Eq, V: Eq> Eq for Map<K, V> {}
+
+impl <K: PartialOrd, V: PartialOrd> PartialOrd for Map<K, V> {
+    fn partial_cmp(&self, other: &Map<K, V>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+impl <K: Ord, V: Ord> Ord for Map<K, V> {
+    fn cmp(&self, other: &Map<K, V>) -> Ordering {
+        self.iter().cmp(other.iter())
     }
 }
 

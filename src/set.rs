@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -150,6 +151,18 @@ impl <V: PartialEq> PartialEq for Set<V> {
 }
 
 impl <V: Eq> Eq for Set<V> {}
+
+impl <V: PartialOrd> PartialOrd for Set<V> {
+    fn partial_cmp(&self, other: &Set<V>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+impl <V: Ord> Ord for Set<V> {
+    fn cmp(&self, other: &Set<V>) -> Ordering {
+        self.iter().cmp(other.iter())
+    }
+}
 
 #[cfg(test)]
 mod test {
