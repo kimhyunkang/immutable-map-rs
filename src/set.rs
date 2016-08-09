@@ -191,6 +191,7 @@ impl <V: Ord + Clone> FromIterator<V> for Set<V> {
     }
 }
 
+#[derive(Clone)]
 pub struct Intersection<'r, V: 'r> {
     a: Peekable<tree::Iter<'r, V, ()>>,
     b: Peekable<tree::Iter<'r, V, ()>>
@@ -223,6 +224,7 @@ impl<'r, V: Ord + 'r> Iterator for Intersection<'r, V> {
     }
 }
 
+#[derive(Clone)]
 pub struct Union<'r, V: 'r> {
     a: Peekable<tree::Iter<'r, V, ()>>,
     b: Peekable<tree::Iter<'r, V, ()>>
@@ -255,6 +257,7 @@ impl <'r, V: Ord + 'r> Iterator for Union<'r, V> {
     }
 }
 
+#[derive(Clone)]
 pub struct Difference<'r, V: 'r> {
     a: Peekable<tree::Iter<'r, V, ()>>,
     b: Peekable<tree::Iter<'r, V, ()>>
@@ -287,6 +290,7 @@ impl<'r, V: Ord + 'r> Iterator for Difference<'r, V> {
     }
 }
 
+#[derive(Clone)]
 pub struct SymmetricDifference<'r, V: 'r> {
     a: Peekable<tree::Iter<'r, V, ()>>,
     b: Peekable<tree::Iter<'r, V, ()>>

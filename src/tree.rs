@@ -245,6 +245,7 @@ fn balance_right_move<K, V>(elem: (K, V),
     }
 }
 
+#[derive(Clone)]
 pub struct Iter<'r, K: 'r, V: 'r> {
     stack: Vec<&'r TreeNode<K, V>>
 }
@@ -300,6 +301,7 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
     }
 }
 
+#[derive(Clone)]
 pub struct RevIter<'r, K: 'r, V: 'r> {
     stack: Vec<&'r TreeNode<K, V>>
 }
@@ -355,12 +357,13 @@ impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Range<'r, K: 'r, V: 'r> {
     stack: Vec<&'r TreeNode<K, V>>,
     rev_stack: Vec<&'r TreeNode<K, V>>
 }
 
+#[derive(Clone)]
 pub struct Keys<I> {
     src: I
 }
@@ -391,6 +394,7 @@ impl<'r, I: 'r, K: 'r, V: 'r> DoubleEndedIterator for Keys<I>
     }
 }
 
+#[derive(Clone)]
 pub struct Values<I> {
     src: I
 }
