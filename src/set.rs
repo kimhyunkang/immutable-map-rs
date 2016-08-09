@@ -71,6 +71,10 @@ impl<V: Ord> Set<V> {
     pub fn is_disjoint(&self, other: &Set<V>) -> bool {
         self.intersection(other).next().is_none()
     }
+
+    pub fn is_subset(&self, other: &Set<V>) -> bool {
+        self.difference(other).next().is_none()
+    }
 }
 
 impl<V> Set<V> {
@@ -901,12 +905,7 @@ mod quickcheck {
             let xs = filter_input(input0);
             let ys = filter_input(input1);
 
-            let mut difference = Vec::new();
-            for x in &xs {
-                if !ys.contains(x) {
-                    difference.push(*x);
-                }
-            }
+            let mut difference: Vec<_> = xs.iter().filter(|x| !ys.contains(x)).cloned().collect();
 
             difference.sort();
 
@@ -953,17 +952,26 @@ mod quickcheck {
             let xs = filter_input(input0);
             let ys = filter_input(input1);
 
-            let mut disjoint = true;
-            for x in &xs {
-                if ys.contains(x) {
-                    disjoint = false;
-                }
-            }
+            let is_disjoint = xs.iter().all(|x| !ys.contains(x));
 
             let x_set: Set<isize> = xs.into_iter().collect();
             let y_set: Set<isize> = ys.into_iter().collect();
 
-            disjoint == x_set.is_disjoint(&y_set)
+            is_disjoint == x_set.is_disjoint(&y_set)
+        }
+    }
+
+    quickcheck! {
+        fn check_is_subset(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let is_subset = xs.iter().all(|x| ys.contains(x));
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            is_subset == x_set.is_subset(&y_set)
         }
     }
 }
