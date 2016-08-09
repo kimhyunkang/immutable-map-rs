@@ -8,6 +8,7 @@ use Bound;
 use tree;
 use tree::TreeNode;
 
+#[derive(Clone, Default)]
 pub struct Map<K, V> {
     root: Option<Rc<TreeNode<K, V>>>
 }

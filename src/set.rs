@@ -7,6 +7,7 @@ use tree;
 use tree::TreeNode;
 use Bound;
 
+#[derive(Clone, Default)]
 pub struct Set<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
 }
