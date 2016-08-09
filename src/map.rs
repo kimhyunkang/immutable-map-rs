@@ -382,24 +382,13 @@ mod quickcheck {
     use map::Map;
     use Bound;
 
-    use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck::TestResult;
     use rand::{Rng, StdRng};
-
-    impl<T: Arbitrary> Arbitrary for Bound<T> {
-        fn arbitrary<G: Gen>(g: &mut G) -> Bound<T> {
-            match g.size() % 3 {
-                0 => Bound::Unbounded,
-                1 => Bound::Included(Arbitrary::arbitrary(g)),
-                2 => Bound::Excluded(Arbitrary::arbitrary(g)),
-                _ => panic!("remainder is greater than 3")
-            }
-        }
-    }
 
     fn filter_input<K: PartialEq, V>(input: Vec<(K, V)>) -> Vec<(K, V)> {
         let mut res: Vec<(K, V)> = Vec::new();
 
-        for (k, v) in input.into_iter() {
+        for (k, v) in input {
             if res.iter().all(|pair| pair.0 != k) {
                 res.push((k, v));
             }
@@ -408,18 +397,10 @@ mod quickcheck {
         res
     }
 
-    fn from_list<K: Ord + Clone, V: Clone>(input: &[(K, V)]) -> Map<K, V> {
-        let mut m = Map::new();
-        for pair in input.iter() {
-            m = m.insert(pair.0.clone(), pair.1.clone());
-        }
-        m
-    }
-
     quickcheck! {
         fn check_length(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             m.len() == input.len()
         }
@@ -428,7 +409,7 @@ mod quickcheck {
     quickcheck! {
         fn check_is_empty(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             m.is_empty() == input.is_empty()
         }
@@ -437,7 +418,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -450,7 +431,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter_size_hint(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -474,7 +455,7 @@ mod quickcheck {
     quickcheck! {
         fn check_rev_iter(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             input.sort();
             input.reverse();
@@ -488,7 +469,7 @@ mod quickcheck {
     quickcheck! {
         fn check_get(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             input.into_iter().all(|(k, v)| m.get(&k) == Some(&v))
         }
@@ -501,7 +482,7 @@ mod quickcheck {
             }
 
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
 
             let &(k, v) = rng.choose(&input).unwrap();
@@ -519,7 +500,7 @@ mod quickcheck {
     quickcheck! {
         fn check_remove_all(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let mut m = from_list(&input);
+            let mut m: Map<isize, char> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
             let mut remove_list = input.clone();
             rng.shuffle(&mut remove_list);
@@ -543,7 +524,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_min(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             if let Some((m_removed, &(k, _))) = m.delete_min() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().min().map(|pair| pair.0)
@@ -556,7 +537,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_max(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             if let Some((m_removed, &(k, _))) = m.delete_max() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().max().map(|pair| pair.0)
@@ -589,7 +570,7 @@ mod quickcheck {
                 -> bool
         {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -633,7 +614,7 @@ mod quickcheck {
                 -> bool
         {
             let input = filter_input(xs);
-            let m = from_list(&input);
+            let m: Map<isize, char> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -678,15 +659,8 @@ mod quickcheck {
             let mut input1 = input0.clone();
             rng.shuffle(&mut input1);
 
-            let mut m0 = Map::new();
-            for (k, v) in input0 {
-                m0 = m0.insert(k, v);
-            }
-
-            let mut m1 = Map::new();
-            for (k, v) in input1 {
-                m1 = m1.insert(k, v);
-            }
+            let m0: Map<isize, char> = input0.into_iter().collect();
+            let m1: Map<isize, char> = input1.into_iter().collect();
 
             m0 == m1
         }
@@ -704,15 +678,8 @@ mod quickcheck {
             rng.shuffle(&mut input1);
             input1.pop();
 
-            let mut m0 = Map::new();
-            for (k, v) in input0 {
-                m0 = m0.insert(k, v);
-            }
-
-            let mut m1 = Map::new();
-            for (k, v) in input1 {
-                m1 = m1.insert(k, v);
-            }
+            let m0: Map<isize, char> = input0.into_iter().collect();
+            let m1: Map<isize, char> = input1.into_iter().collect();
 
             TestResult::from_bool(m0 != m1)
         }
