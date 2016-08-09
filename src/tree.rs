@@ -274,15 +274,15 @@ impl<'r, K: 'r, V: 'r> Iter<'r, K, V> {
 }
 
 impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
-    type Item = &'r (K, V);
+    type Item = (&'r K, &'r V);
 
-    fn next(&mut self) -> Option<&'r (K, V)> {
+    fn next(&mut self) -> Option<(&'r K, &'r V)> {
         let top = match self.stack.pop() {
             None => return None,
             Some(t) => t
         };
 
-        let ret = &top.elem;
+        let ret = (&top.elem.0, &top.elem.1);
 
         if let Some(ref r) = top.right {
             self.push_left(r);
@@ -329,15 +329,15 @@ impl<'r, K: 'r, V: 'r> RevIter<'r, K, V> {
 }
 
 impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
-    type Item = &'r (K, V);
+    type Item = (&'r K, &'r V);
 
-    fn next(&mut self) -> Option<&'r (K, V)> {
+    fn next(&mut self) -> Option<(&'r K, &'r V)> {
         let top = match self.stack.pop() {
             None => return None,
             Some(t) => t
         };
 
-        let ret = &top.elem;
+        let ret = (&top.elem.0, &top.elem.1);
 
         if let Some(ref r) = top.left {
             self.push_right(r);
@@ -504,18 +504,18 @@ impl<'r, K: Ord + 'r, V: 'r> Range<'r, K, V> {
 }
 
 impl<'r, K: Ord + 'r, V: 'r> Iterator for Range<'r, K, V> {
-    type Item = &'r (K, V);
+    type Item = (&'r K, &'r V);
 
-    fn next(&mut self) -> Option<&'r (K, V)> {
+    fn next(&mut self) -> Option<(&'r K, &'r V)> {
         let top = match self.stack.pop() {
             None => return None,
             Some(t) => t
         };
 
-        let ret = &top.elem;
+        let ret = (&top.elem.0, &top.elem.1);
 
         if let Some(rev_top) = self.rev_stack.last() {
-            if rev_top.elem.0 < ret.0 {
+            if rev_top.elem.0 < top.elem.0 {
                 return None;
             }
         } else {
@@ -531,16 +531,16 @@ impl<'r, K: Ord + 'r, V: 'r> Iterator for Range<'r, K, V> {
 }
 
 impl<'r, K: Ord + 'r, V: 'r> DoubleEndedIterator for Range<'r, K, V> {
-    fn next_back(&mut self) -> Option<&'r (K, V)> {
+    fn next_back(&mut self) -> Option<(&'r K, &'r V)> {
         let top = match self.rev_stack.pop() {
             None => return None,
             Some(t) => t
         };
 
-        let ret = &top.elem;
+        let ret = (&top.elem.0, &top.elem.1);
 
         if let Some(rev_top) = self.stack.last() {
-            if ret.0 < rev_top.elem.0 {
+            if top.elem.0 < rev_top.elem.0 {
                 return None;
             }
         } else {

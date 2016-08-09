@@ -102,11 +102,11 @@ pub struct SetIter<I> {
     src: I
 }
 
-impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=&'r (V, ())> {
+impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=(&'r V, &'r ())> {
     type Item = &'r V;
 
     fn next(&mut self) -> Option<&'r V> {
-        self.src.next().map(|p| &p.0)
+        self.src.next().map(|p| p.0)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -115,10 +115,10 @@ impl<'r, I: 'r, V: 'r> Iterator for SetIter<I> where I: Iterator<Item=&'r (V, ()
 }
 
 impl<'r, I: 'r, V: 'r> DoubleEndedIterator for SetIter<I>
-    where I: DoubleEndedIterator<Item=&'r (V, ())>
+    where I: DoubleEndedIterator<Item=(&'r V, &'r ())>
 {
     fn next_back(&mut self) -> Option<&'r V> {
-        self.src.next_back().map(|p| &p.0)
+        self.src.next_back().map(|p| p.0)
     }
 }
 

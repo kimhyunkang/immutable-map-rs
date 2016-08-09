@@ -129,7 +129,7 @@ mod test {
             (17, 'q'), (18, 'r')
         ];
 
-        let res: Vec<_> = r10.iter().cloned().collect();
+        let res: Vec<_> = r10.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
         assert_eq!(10, r10.len());
@@ -149,7 +149,7 @@ mod test {
         let (r7, v) = r6.delete_min().unwrap();
 
         let expected = vec![(4, 'd'), (5, 'e'), (7, 'g'), (12, 'l'), (15, 'o')];
-        let res: Vec<_> = r7.iter().cloned().collect();
+        let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
         assert_eq!(&(3, 'c'), v);
@@ -167,7 +167,7 @@ mod test {
         let (r7, v) = r6.delete_max().unwrap();
 
         let expected = vec![(3, 'c'), (4, 'd'), (5, 'e'), (7, 'g'), (12, 'l')];
-        let res: Vec<_> = r7.iter().cloned().collect();
+        let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
         assert_eq!(&(15, 'o'), v);
@@ -185,7 +185,7 @@ mod test {
         let (r7, v) = r6.remove(&7).unwrap();
 
         let expected = vec![(3, 'c'), (4, 'd'), (5, 'e'), (12, 'l'), (15, 'o')];
-        let res: Vec<_> = r7.iter().cloned().collect();
+        let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
         assert_eq!(&(7, 'g'), v);
@@ -211,7 +211,7 @@ mod test {
             (17, 'q'), (18, 'r')
         ];
 
-        let res: Vec<(usize, char)> = r10.iter().cloned().collect();
+        let res: Vec<_> = r10.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
 
@@ -238,7 +238,7 @@ mod test {
             (7, 'g'), (5, 'e'), (4, 'd'), (3, 'c')
         ];
 
-        let res: Vec<(usize, char)> = r10.rev_iter().cloned().collect();
+        let res: Vec<_> = r10.rev_iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
 
@@ -272,8 +272,9 @@ mod test {
 
         let expected = vec![(7, 'g'), (12, 'l'), (14, 'n'), (15, 'o'), (16, 'p')];
 
-        let res: Vec<(usize, char)> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
-                                         .cloned().collect();
+        let res: Vec<_> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                             .map(|(&k, &v)| (k, v))
+                             .collect();
 
         assert_eq!(expected, res);
     }
@@ -294,9 +295,10 @@ mod test {
 
         let expected = vec![(16, 'p'), (15, 'o'), (14, 'n'), (12, 'l'), (7, 'g')];
 
-        let res: Vec<(usize, char)> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
-                                         .rev()
-                                         .cloned().collect();
+        let res: Vec<_> = r10.range(Bound::Included(&6), Bound::Excluded(&17))
+                             .rev()
+                             .map(|(&k, &v)| (k, v))
+                             .collect();
 
         assert_eq!(expected, res);
     }
@@ -366,7 +368,7 @@ mod quickcheck {
 
             input.sort();
 
-            let collected: Vec<(isize, char)> = m.iter().cloned().collect();
+            let collected: Vec<(isize, char)> = m.iter().map(|(&k, &v)| (k, v)).collect();
 
             collected == input
         }
@@ -404,7 +406,7 @@ mod quickcheck {
             input.sort();
             input.reverse();
 
-            let collected: Vec<(isize, char)> = m.rev_iter().cloned().collect();
+            let collected: Vec<(isize, char)> = m.rev_iter().map(|(&k, &v)| (k, v)).collect();
 
             collected == input
         }
@@ -524,7 +526,7 @@ mod quickcheck {
                 Bound::Excluded(ref s) => Bound::Excluded(s),
             };
 
-            let res: Vec<(isize, char)> = m.range(min, max).cloned().collect();
+            let res: Vec<(isize, char)> = m.range(min, max).map(|(&k, &v)| (k, v)).collect();
 
             for window in res.windows(2) {
                 let (k0, _) = window[0];
@@ -568,7 +570,7 @@ mod quickcheck {
                 Bound::Excluded(ref s) => Bound::Excluded(s),
             };
 
-            let res: Vec<(isize, char)> = m.range(min, max).rev().cloned().collect();
+            let res: Vec<(isize, char)> = m.range(min, max).rev().map(|(&k, &v)| (k, v)).collect();
 
             for window in res.windows(2) {
                 let (k0, _) = window[0];
