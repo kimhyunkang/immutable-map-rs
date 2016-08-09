@@ -247,12 +247,13 @@ fn balance_right_move<K, V>(elem: (K, V),
 
 #[derive(Clone)]
 pub struct Iter<'r, K: 'r, V: 'r> {
-    stack: Vec<&'r TreeNode<K, V>>
+    stack: Vec<&'r TreeNode<K, V>>,
+    size: usize
 }
 
 impl<'r, K: 'r, V: 'r> Iter<'r, K, V> {
     pub fn new(node: &'r Option<Rc<TreeNode<K, V>>>) -> Iter<'r, K, V> {
-        let mut iter = Iter { stack: Vec::new() };
+        let mut iter = Iter { stack: Vec::new(), size: size(node) };
 
         if let Some(ref n) = *node {
             iter.push_left(n);
@@ -301,14 +302,21 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
     }
 }
 
+impl<'r, K: 'r, V: 'r> ExactSizeIterator for Iter<'r, K, V> {
+    fn len(&self) -> usize {
+        self.size
+    }
+}
+
 #[derive(Clone)]
 pub struct RevIter<'r, K: 'r, V: 'r> {
-    stack: Vec<&'r TreeNode<K, V>>
+    stack: Vec<&'r TreeNode<K, V>>,
+    size: usize
 }
 
 impl<'r, K: 'r, V: 'r> RevIter<'r, K, V> {
     pub fn new(node: &'r Option<Rc<TreeNode<K, V>>>) -> RevIter<'r, K, V> {
-        let mut iter = RevIter { stack: Vec::new() };
+        let mut iter = RevIter { stack: Vec::new(), size: size(node) };
 
         if let Some(ref n) = *node {
             iter.push_right(n);
@@ -357,6 +365,12 @@ impl<'r, K: 'r, V: 'r> Iterator for RevIter<'r, K, V> {
     }
 }
 
+impl<'r, K: 'r, V: 'r> ExactSizeIterator for RevIter<'r, K, V> {
+    fn len(&self) -> usize {
+        self.size
+    }
+}
+
 #[derive(Clone)]
 pub struct Range<'r, K: 'r, V: 'r> {
     stack: Vec<&'r TreeNode<K, V>>,
@@ -394,6 +408,14 @@ impl<'r, I: 'r, K: 'r, V: 'r> DoubleEndedIterator for Keys<I>
     }
 }
 
+impl<'r, K: 'r, V: 'r, I: 'r> ExactSizeIterator for Keys<I>
+    where I: ExactSizeIterator + Iterator<Item=(&'r K, &'r V)>
+{
+    fn len(&self) -> usize {
+        self.src.len()
+    }
+}
+
 #[derive(Clone)]
 pub struct Values<I> {
     src: I
@@ -422,6 +444,14 @@ impl<'r, I: 'r, K: 'r, V: 'r> DoubleEndedIterator for Values<I>
 {
     fn next_back(&mut self) -> Option<&'r V> {
         self.src.next_back().map(|p| p.1)
+    }
+}
+
+impl<'r, K: 'r, V: 'r, I: 'r> ExactSizeIterator for Values<I>
+    where I: ExactSizeIterator + Iterator<Item=(&'r K, &'r V)>
+{
+    fn len(&self) -> usize {
+        self.src.len()
     }
 }
 
