@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
-use std::iter::FromIterator;
+use std::iter::{FromIterator, Peekable};
 use std::rc::Rc;
 
 use tree;
@@ -38,6 +38,13 @@ impl<V: Ord> Set<V> {
         where V: Borrow<Q>
     {
         SetIter { src: tree::Range::new(&self.root, min, max) }
+    }
+
+    pub fn intersection<'r>(&'r self, other: &'r Set<V>) -> Intersection<'r, V> {
+        Intersection {
+            a: tree::Iter::new(&self.root).peekable(),
+            b: tree::Iter::new(&other.root).peekable()
+        }
     }
 }
 
@@ -172,6 +179,38 @@ impl <V: Ord + Clone> FromIterator<V> for Set<V> {
             s = s.insert(v);
         }
         s
+    }
+}
+
+pub struct Intersection<'r, V: 'r> {
+    a: Peekable<tree::Iter<'r, V, ()>>,
+    b: Peekable<tree::Iter<'r, V, ()>>
+}
+
+impl<'r, V: Ord + 'r> Iterator for Intersection<'r, V> {
+    type Item = &'r V;
+
+    fn next(&mut self) -> Option<&'r V> {
+        loop {
+            let cmp = match (self.a.peek(), self.b.peek()) {
+                (None, _) => return None,
+                (_, None) => return None,
+                (Some(a), Some(b)) => a.cmp(b)
+            };
+
+            match cmp {
+                Ordering::Less => {
+                    self.a.next();
+                },
+                Ordering::Equal => {
+                    self.b.next();
+                    return self.a.next().map(|pair| pair.0);
+                },
+                Ordering::Greater => {
+                    self.b.next();
+                }
+            }
+        }
     }
 }
 
@@ -687,6 +726,29 @@ mod quickcheck {
             let m1: Set<isize> = input1.into_iter().collect();
 
             TestResult::from_bool(m0 != m1)
+        }
+    }
+
+    quickcheck! {
+        fn check_intersection(input0: Vec<isize>, input1: Vec<isize>) -> bool {
+            let xs = filter_input(input0);
+            let ys = filter_input(input1);
+
+            let mut intersection = Vec::new();
+            for x in &xs {
+                if ys.contains(x) {
+                    intersection.push(*x);
+                }
+            }
+
+            intersection.sort();
+
+            let x_set: Set<isize> = xs.into_iter().collect();
+            let y_set: Set<isize> = ys.into_iter().collect();
+
+            let res: Vec<isize> = x_set.intersection(&y_set).cloned().collect();
+
+            res == intersection
         }
     }
 }
