@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
+use std::ops::Index;
 use std::rc::Rc;
 
 use Bound;
@@ -141,6 +142,16 @@ impl <K: PartialOrd, V: PartialOrd> PartialOrd for Map<K, V> {
 impl <K: Ord, V: Ord> Ord for Map<K, V> {
     fn cmp(&self, other: &Map<K, V>) -> Ordering {
         self.iter().cmp(other.iter())
+    }
+}
+
+impl <'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for Map<K, V>
+    where K: Borrow<Q>, Q: Ord
+{
+    type Output = V;
+
+    fn index(&self, key: &Q) -> &V {
+        self.get(key).expect("no entry found for key")
     }
 }
 
