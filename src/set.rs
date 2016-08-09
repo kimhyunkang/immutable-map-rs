@@ -1,4 +1,6 @@
 use std::borrow::Borrow;
+use std::fmt;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use tree;
@@ -95,6 +97,12 @@ impl<V: Ord> Set<V> where V: Clone {
         tree::remove(&self.root, key).map(|(new_root, v)|
             (Set { root: new_root }, &v.0)
         )
+    }
+}
+
+impl<V: Debug + Ord> Debug for Set<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_set().entries(self.iter()).finish()
     }
 }
 
@@ -310,5 +318,14 @@ mod test {
                                  .cloned().collect();
 
         assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_debug() {
+        let r0 = Set::new();
+        let r1 = r0.insert(7);
+        let r2 = r1.insert(4);
+
+        assert_eq!("{4, 7}", &format!("{:?}", r2));
     }
 }

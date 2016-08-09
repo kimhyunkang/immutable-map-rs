@@ -1,4 +1,6 @@
 use std::borrow::Borrow;
+use std::fmt;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use Bound;
@@ -99,6 +101,12 @@ impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
         tree::remove(&self.root, key).map(|(new_root, v)|
             (Map { root: new_root }, v)
         )
+    }
+}
+
+impl<K: Debug + Ord, V: Debug> Debug for Map<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
     }
 }
 
@@ -301,6 +309,15 @@ mod test {
                              .collect();
 
         assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn test_debug() {
+        let r0 = Map::new();
+        let r1 = r0.insert(7, 'g');
+        let r2 = r1.insert(4, 'd');
+
+        assert_eq!("{4: 'd', 7: 'g'}", &format!("{:?}", r2));
     }
 }
 
