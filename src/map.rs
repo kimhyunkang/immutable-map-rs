@@ -12,15 +12,15 @@ use tree;
 use tree::TreeNode;
 
 #[derive(Clone, Default)]
-pub struct Map<K, V> {
+pub struct TreeMap<K, V> {
     root: Option<Rc<TreeNode<K, V>>>
 }
 
-pub type MapIter<'r, K, V> = tree::Iter<'r, K, V>;
-pub type MapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
-pub type MapRange<'r, K, V> = tree::Range<'r, K, V>;
+pub type TreeMapIter<'r, K, V> = tree::Iter<'r, K, V>;
+pub type TreeMapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
+pub type TreeMapRange<'r, K, V> = tree::Range<'r, K, V>;
 
-impl<K, V> Map<K, V> where K: Ord {
+impl<K, V> TreeMap<K, V> where K: Ord {
     pub fn get<Q: ?Sized + Ord>(&self, key: &Q) -> Option<&V>
         where K: Borrow<Q>
     {
@@ -39,16 +39,16 @@ impl<K, V> Map<K, V> where K: Ord {
         self.get(key).is_some()
     }
 
-    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> MapRange<'r, K, V>
+    pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> TreeMapRange<'r, K, V>
         where K: Borrow<Q>
     {
         tree::Range::new(&self.root, min, max)
     }
 }
 
-impl<K, V> Map<K, V> {
-    pub fn new() -> Map<K, V> {
-        Map { root: None }
+impl<K, V> TreeMap<K, V> {
+    pub fn new() -> TreeMap<K, V> {
+        TreeMap { root: None }
     }
 
     pub fn len(&self) -> usize {
@@ -59,36 +59,36 @@ impl<K, V> Map<K, V> {
         self.root.is_none()
     }
 
-    pub fn iter<'r>(&'r self) -> MapIter<'r, K, V> {
+    pub fn iter<'r>(&'r self) -> TreeMapIter<'r, K, V> {
         tree::Iter::new(&self.root)
     }
 
-    pub fn rev_iter<'r>(&'r self) -> MapRevIter<'r, K, V> {
+    pub fn rev_iter<'r>(&'r self) -> TreeMapRevIter<'r, K, V> {
         tree::RevIter::new(&self.root)
     }
 
-    pub fn keys<'r>(&'r self) -> tree::Keys<MapIter<'r, K, V>> {
+    pub fn keys<'r>(&'r self) -> tree::Keys<TreeMapIter<'r, K, V>> {
         tree::Keys::new(tree::Iter::new(&self.root))
     }
 
-    pub fn values<'r>(&'r self) -> tree::Values<MapIter<'r, K, V>> {
+    pub fn values<'r>(&'r self) -> tree::Values<TreeMapIter<'r, K, V>> {
         tree::Values::new(tree::Iter::new(&self.root))
     }
 }
 
-impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
-    pub fn insert(&self, key: K, value: V) -> Map<K, V>
+impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
+    pub fn insert(&self, key: K, value: V) -> TreeMap<K, V>
     {
         let root = tree::insert(&self.root, (key, value));
-        Map { root: Some(Rc::new(root)) }
+        TreeMap { root: Some(Rc::new(root)) }
     }
 
-    pub fn delete_min(&self) -> Option<(Map<K, V>, &(K, V))>
+    pub fn delete_min(&self) -> Option<(TreeMap<K, V>, &(K, V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_min(&root);
             Some((
-                Map { root: new_root },
+                TreeMap { root: new_root },
                 v
             ))
         } else {
@@ -96,12 +96,12 @@ impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
         }
     }
 
-    pub fn delete_max(&self) -> Option<(Map<K, V>, &(K, V))>
+    pub fn delete_max(&self) -> Option<(TreeMap<K, V>, &(K, V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_max(&root);
             Some((
-                Map { root: new_root },
+                TreeMap { root: new_root },
                 v
             ))
         } else {
@@ -109,52 +109,52 @@ impl<K, V> Map<K, V> where K: Clone + Ord, V: Clone {
         }
     }
 
-    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(Map<K, V>, &(K, V))>
+    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(TreeMap<K, V>, &(K, V))>
         where K: Borrow<Q>
     {
         tree::remove(&self.root, key).map(|(new_root, v)|
-            (Map { root: new_root }, v)
+            (TreeMap { root: new_root }, v)
         )
     }
 }
 
-impl<K: Debug + Ord, V: Debug> Debug for Map<K, V> {
+impl<K: Debug + Ord, V: Debug> Debug for TreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
-impl<'r, K: Ord, V> IntoIterator for &'r Map<K, V> {
+impl<'r, K: Ord, V> IntoIterator for &'r TreeMap<K, V> {
     type Item = (&'r K, &'r V);
-    type IntoIter = MapIter<'r, K, V>;
+    type IntoIter = TreeMapIter<'r, K, V>;
 
-    fn into_iter(self) -> MapIter<'r, K, V> {
+    fn into_iter(self) -> TreeMapIter<'r, K, V> {
         self.iter()
     }
 }
 
-impl<K: PartialEq, V: PartialEq> PartialEq for Map<K, V> {
-    fn eq(&self, other: &Map<K, V>) -> bool {
+impl<K: PartialEq, V: PartialEq> PartialEq for TreeMap<K, V> {
+    fn eq(&self, other: &TreeMap<K, V>) -> bool {
         self.len() == other.len()
             && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 }
 
-impl<K: Eq, V: Eq> Eq for Map<K, V> {}
+impl<K: Eq, V: Eq> Eq for TreeMap<K, V> {}
 
-impl <K: PartialOrd, V: PartialOrd> PartialOrd for Map<K, V> {
-    fn partial_cmp(&self, other: &Map<K, V>) -> Option<Ordering> {
+impl <K: PartialOrd, V: PartialOrd> PartialOrd for TreeMap<K, V> {
+    fn partial_cmp(&self, other: &TreeMap<K, V>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
-impl <K: Ord, V: Ord> Ord for Map<K, V> {
-    fn cmp(&self, other: &Map<K, V>) -> Ordering {
+impl <K: Ord, V: Ord> Ord for TreeMap<K, V> {
+    fn cmp(&self, other: &TreeMap<K, V>) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
-impl <'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for Map<K, V>
+impl <'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for TreeMap<K, V>
     where K: Borrow<Q>, Q: Ord
 {
     type Output = V;
@@ -164,9 +164,9 @@ impl <'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for Map<K, V>
     }
 }
 
-impl <K: Ord + Clone, V: Clone> FromIterator<(K, V)> for Map<K, V> {
-    fn from_iter<T>(iter: T) -> Map<K, V> where T: IntoIterator<Item=(K, V)> {
-        let mut m = Map::new();
+impl <K: Ord + Clone, V: Clone> FromIterator<(K, V)> for TreeMap<K, V> {
+    fn from_iter<T>(iter: T) -> TreeMap<K, V> where T: IntoIterator<Item=(K, V)> {
+        let mut m = TreeMap::new();
         for (k, v) in iter {
             m = m.insert(k, v);
         }
@@ -178,12 +178,12 @@ impl <K: Ord + Clone, V: Clone> FromIterator<(K, V)> for Map<K, V> {
 mod test {
     use tree::balanced;
 
-    use super::Map;
+    use super::TreeMap;
     use Bound;
 
     #[test]
     fn test_insert() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -211,7 +211,7 @@ mod test {
 
     #[test]
     fn test_delete_min() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -229,7 +229,7 @@ mod test {
 
     #[test]
     fn test_delete_max() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -247,7 +247,7 @@ mod test {
 
     #[test]
     fn test_remove() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -265,7 +265,7 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -292,7 +292,7 @@ mod test {
 
     #[test]
     fn test_rev_iter() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -319,7 +319,7 @@ mod test {
 
     #[test]
     fn test_is_empty() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
 
@@ -330,7 +330,7 @@ mod test {
 
     #[test]
     fn test_range() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -353,7 +353,7 @@ mod test {
 
     #[test]
     fn test_range_rev() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(4, 'd');
         let r2 = r1.insert(7, 'g');
         let r3 = r2.insert(12, 'l');
@@ -377,7 +377,7 @@ mod test {
 
     #[test]
     fn test_debug() {
-        let r0 = Map::new();
+        let r0 = TreeMap::new();
         let r1 = r0.insert(7, 'g');
         let r2 = r1.insert(4, 'd');
 
@@ -387,7 +387,7 @@ mod test {
 
 #[cfg(test)]
 mod quickcheck {
-    use map::Map;
+    use map::TreeMap;
     use Bound;
 
     use quickcheck::TestResult;
@@ -408,7 +408,7 @@ mod quickcheck {
     quickcheck! {
         fn check_length(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             m.len() == input.len()
         }
@@ -417,7 +417,7 @@ mod quickcheck {
     quickcheck! {
         fn check_is_empty(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             m.is_empty() == input.is_empty()
         }
@@ -426,7 +426,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -439,7 +439,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter_size_hint(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -463,7 +463,7 @@ mod quickcheck {
     quickcheck! {
         fn check_rev_iter(xs: Vec<(isize, char)>) -> bool {
             let mut input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             input.sort();
             input.reverse();
@@ -477,7 +477,7 @@ mod quickcheck {
     quickcheck! {
         fn check_get(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             input.into_iter().all(|(k, v)| m.get(&k) == Some(&v))
         }
@@ -490,7 +490,7 @@ mod quickcheck {
             }
 
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
 
             let &(k, v) = rng.choose(&input).unwrap();
@@ -508,7 +508,7 @@ mod quickcheck {
     quickcheck! {
         fn check_remove_all(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let mut m: Map<isize, char> = input.iter().cloned().collect();
+            let mut m: TreeMap<isize, char> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
             let mut remove_list = input.clone();
             rng.shuffle(&mut remove_list);
@@ -532,7 +532,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_min(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             if let Some((m_removed, &(k, _))) = m.delete_min() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().min().map(|pair| pair.0)
@@ -545,7 +545,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_max(xs: Vec<(isize, char)>) -> bool {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             if let Some((m_removed, &(k, _))) = m.delete_max() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().max().map(|pair| pair.0)
@@ -578,7 +578,7 @@ mod quickcheck {
                 -> bool
         {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -622,7 +622,7 @@ mod quickcheck {
                 -> bool
         {
             let input = filter_input(xs);
-            let m: Map<isize, char> = input.iter().cloned().collect();
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -667,8 +667,8 @@ mod quickcheck {
             let mut input1 = input0.clone();
             rng.shuffle(&mut input1);
 
-            let m0: Map<isize, char> = input0.into_iter().collect();
-            let m1: Map<isize, char> = input1.into_iter().collect();
+            let m0: TreeMap<isize, char> = input0.into_iter().collect();
+            let m1: TreeMap<isize, char> = input1.into_iter().collect();
 
             m0 == m1
         }
@@ -686,8 +686,8 @@ mod quickcheck {
             rng.shuffle(&mut input1);
             input1.pop();
 
-            let m0: Map<isize, char> = input0.into_iter().collect();
-            let m1: Map<isize, char> = input1.into_iter().collect();
+            let m0: TreeMap<isize, char> = input0.into_iter().collect();
+            let m1: TreeMap<isize, char> = input1.into_iter().collect();
 
             TestResult::from_bool(m0 != m1)
         }
@@ -699,7 +699,7 @@ mod quickcheck {
             let input = filter_input(xs);
             let mut expected: Vec<isize> = input.iter().map(|pair| pair.0).collect();
 
-            let m: Map<isize, char> = input.into_iter().collect();
+            let m: TreeMap<isize, char> = input.into_iter().collect();
             expected.sort();
 
             let keys: Vec<isize> = m.keys().cloned().collect();
@@ -716,7 +716,7 @@ mod quickcheck {
             sorted_input.sort();
             let expected: Vec<char> = sorted_input.into_iter().map(|pair| pair.1).collect();
 
-            let m: Map<isize, char> = input.into_iter().collect();
+            let m: TreeMap<isize, char> = input.into_iter().collect();
 
             let values: Vec<char> = m.values().cloned().collect();
 

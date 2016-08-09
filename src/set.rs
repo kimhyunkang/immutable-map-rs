@@ -10,11 +10,11 @@ use tree::TreeNode;
 use Bound;
 
 #[derive(Clone, Default)]
-pub struct Set<V> {
+pub struct TreeSet<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
 }
 
-impl<V: Ord> Set<V> {
+impl<V: Ord> TreeSet<V> {
     pub fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<&V>
         where V: Borrow<Q>
     {
@@ -40,50 +40,50 @@ impl<V: Ord> Set<V> {
         tree::Keys::new(tree::Range::new(&self.root, min, max))
     }
 
-    pub fn intersection<'r>(&'r self, other: &'r Set<V>) -> Intersection<'r, V> {
+    pub fn intersection<'r>(&'r self, other: &'r TreeSet<V>) -> Intersection<'r, V> {
         Intersection {
             a: tree::Iter::new(&self.root).peekable(),
             b: tree::Iter::new(&other.root).peekable()
         }
     }
 
-    pub fn union<'r>(&'r self, other: &'r Set<V>) -> Union<'r, V> {
+    pub fn union<'r>(&'r self, other: &'r TreeSet<V>) -> Union<'r, V> {
         Union {
             a: tree::Iter::new(&self.root).peekable(),
             b: tree::Iter::new(&other.root).peekable()
         }
     }
 
-    pub fn difference<'r>(&'r self, other: &'r Set<V>) -> Difference<'r, V> {
+    pub fn difference<'r>(&'r self, other: &'r TreeSet<V>) -> Difference<'r, V> {
         Difference {
             a: tree::Iter::new(&self.root).peekable(),
             b: tree::Iter::new(&other.root).peekable()
         }
     }
 
-    pub fn symmetric_difference<'r>(&'r self, other: &'r Set<V>) -> SymmetricDifference<'r, V> {
+    pub fn symmetric_difference<'r>(&'r self, other: &'r TreeSet<V>) -> SymmetricDifference<'r, V> {
         SymmetricDifference {
             a: tree::Iter::new(&self.root).peekable(),
             b: tree::Iter::new(&other.root).peekable()
         }
     }
 
-    pub fn is_disjoint(&self, other: &Set<V>) -> bool {
+    pub fn is_disjoint(&self, other: &TreeSet<V>) -> bool {
         self.intersection(other).next().is_none()
     }
 
-    pub fn is_subset(&self, other: &Set<V>) -> bool {
+    pub fn is_subset(&self, other: &TreeSet<V>) -> bool {
         self.difference(other).next().is_none()
     }
 
-    pub fn is_superset(&self, other: &Set<V>) -> bool {
+    pub fn is_superset(&self, other: &TreeSet<V>) -> bool {
         other.difference(self).next().is_none()
     }
 }
 
-impl<V> Set<V> {
-    pub fn new() -> Set<V> {
-        Set { root: None }
+impl<V> TreeSet<V> {
+    pub fn new() -> TreeSet<V> {
+        TreeSet { root: None }
     }
 
     pub fn len(&self) -> usize {
@@ -103,19 +103,19 @@ impl<V> Set<V> {
     }
 }
 
-impl<V: Ord> Set<V> where V: Clone {
-    pub fn insert(&self, value: V) -> Set<V>
+impl<V: Ord> TreeSet<V> where V: Clone {
+    pub fn insert(&self, value: V) -> TreeSet<V>
     {
         let root = tree::insert(&self.root, (value, ()));
-        Set { root: Some(Rc::new(root)) }
+        TreeSet { root: Some(Rc::new(root)) }
     }
 
-    pub fn delete_min(&self) -> Option<(Set<V>, &V)>
+    pub fn delete_min(&self) -> Option<(TreeSet<V>, &V)>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_min(&root);
             Some((
-                Set { root: new_root },
+                TreeSet { root: new_root },
                 &v.0
             ))
         } else {
@@ -123,12 +123,12 @@ impl<V: Ord> Set<V> where V: Clone {
         }
     }
 
-    pub fn delete_max(&self) -> Option<(Set<V>, &V)>
+    pub fn delete_max(&self) -> Option<(TreeSet<V>, &V)>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_max(&root);
             Some((
-                Set { root: new_root },
+                TreeSet { root: new_root },
                 &v.0
             ))
         } else {
@@ -136,22 +136,22 @@ impl<V: Ord> Set<V> where V: Clone {
         }
     }
 
-    pub fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<(Set<V>, &V)>
+    pub fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<(TreeSet<V>, &V)>
         where V: Borrow<Q>
     {
         tree::remove(&self.root, key).map(|(new_root, v)|
-            (Set { root: new_root }, &v.0)
+            (TreeSet { root: new_root }, &v.0)
         )
     }
 }
 
-impl<V: Debug + Ord> Debug for Set<V> {
+impl<V: Debug + Ord> Debug for TreeSet<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
     }
 }
 
-impl<'r, V: Ord> IntoIterator for &'r Set<V> {
+impl<'r, V: Ord> IntoIterator for &'r TreeSet<V> {
     type Item = &'r V;
     type IntoIter = tree::Keys<tree::Iter<'r, V, ()>>;
 
@@ -160,30 +160,30 @@ impl<'r, V: Ord> IntoIterator for &'r Set<V> {
     }
 }
 
-impl <V: PartialEq> PartialEq for Set<V> {
-    fn eq(&self, other: &Set<V>) -> bool {
+impl <V: PartialEq> PartialEq for TreeSet<V> {
+    fn eq(&self, other: &TreeSet<V>) -> bool {
         self.len() == other.len()
             && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 }
 
-impl <V: Eq> Eq for Set<V> {}
+impl <V: Eq> Eq for TreeSet<V> {}
 
-impl <V: PartialOrd> PartialOrd for Set<V> {
-    fn partial_cmp(&self, other: &Set<V>) -> Option<Ordering> {
+impl <V: PartialOrd> PartialOrd for TreeSet<V> {
+    fn partial_cmp(&self, other: &TreeSet<V>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
-impl <V: Ord> Ord for Set<V> {
-    fn cmp(&self, other: &Set<V>) -> Ordering {
+impl <V: Ord> Ord for TreeSet<V> {
+    fn cmp(&self, other: &TreeSet<V>) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
-impl <V: Ord + Clone> FromIterator<V> for Set<V> {
-    fn from_iter<T>(iter: T) -> Set<V> where T: IntoIterator<Item=V> {
-        let mut s = Set::new();
+impl <V: Ord + Clone> FromIterator<V> for TreeSet<V> {
+    fn from_iter<T>(iter: T) -> TreeSet<V> where T: IntoIterator<Item=V> {
+        let mut s = TreeSet::new();
         for v in iter {
             s = s.insert(v);
         }
@@ -328,11 +328,11 @@ mod test {
     use tree::balanced;
     use Bound;
 
-    use super::Set;
+    use super::TreeSet;
 
     #[test]
     fn test_insert() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert((4, 'd'));
         let r2 = r1.insert((7, 'g'));
         let r3 = r2.insert((12, 'l'));
@@ -360,7 +360,7 @@ mod test {
 
     #[test]
     fn test_delete_min() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -379,7 +379,7 @@ mod test {
 
     #[test]
     fn test_delete_max() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -397,7 +397,7 @@ mod test {
 
     #[test]
     fn test_remove() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -415,7 +415,7 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -437,7 +437,7 @@ mod test {
 
     #[test]
     fn test_rev_iter() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -459,7 +459,7 @@ mod test {
 
     #[test]
     fn test_is_empty() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
 
@@ -470,7 +470,7 @@ mod test {
 
     #[test]
     fn test_range() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -492,7 +492,7 @@ mod test {
 
     #[test]
     fn test_range_rev() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(4);
         let r2 = r1.insert(7);
         let r3 = r2.insert(12);
@@ -515,7 +515,7 @@ mod test {
 
     #[test]
     fn test_debug() {
-        let r0 = Set::new();
+        let r0 = TreeSet::new();
         let r1 = r0.insert(7);
         let r2 = r1.insert(4);
 
@@ -524,16 +524,16 @@ mod test {
 
     #[test]
     fn test_eq() {
-        let a = Set::new().insert(3).insert(1).insert(2);
-        let b = Set::new().insert(2).insert(3).insert(1).insert(2);
+        let a = TreeSet::new().insert(3).insert(1).insert(2);
+        let b = TreeSet::new().insert(2).insert(3).insert(1).insert(2);
 
         assert_eq!(a, b);
     }
 
     #[test]
     fn test_neq() {
-        let a = Set::new().insert(3).insert(1).insert(2);
-        let b = Set::new().insert(2).insert(4).insert(1);
+        let a = TreeSet::new().insert(3).insert(1).insert(2);
+        let b = TreeSet::new().insert(2).insert(4).insert(1);
 
         assert!(a != b);
     }
@@ -541,7 +541,7 @@ mod test {
 
 #[cfg(test)]
 mod quickcheck {
-    use set::Set;
+    use set::TreeSet;
     use Bound;
 
     use quickcheck::TestResult;
@@ -562,7 +562,7 @@ mod quickcheck {
     quickcheck! {
         fn check_length(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             m.len() == input.len()
         }
@@ -571,7 +571,7 @@ mod quickcheck {
     quickcheck! {
         fn check_is_empty(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             m.is_empty() == input.is_empty()
         }
@@ -580,7 +580,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter(xs: Vec<isize>) -> bool {
             let mut input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -593,7 +593,7 @@ mod quickcheck {
     quickcheck! {
         fn check_iter_size_hint(xs: Vec<isize>) -> bool {
             let mut input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             input.sort();
 
@@ -617,7 +617,7 @@ mod quickcheck {
     quickcheck! {
         fn check_rev_iter(xs: Vec<isize>) -> bool {
             let mut input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             input.sort();
             input.reverse();
@@ -631,7 +631,7 @@ mod quickcheck {
     quickcheck! {
         fn check_contains(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             input.into_iter().all(|v| m.contains(&v))
         }
@@ -644,7 +644,7 @@ mod quickcheck {
             }
 
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
 
             let &v = rng.choose(&input).unwrap();
@@ -662,7 +662,7 @@ mod quickcheck {
     quickcheck! {
         fn check_remove_all(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let mut m: Set<isize> = input.iter().cloned().collect();
+            let mut m: TreeSet<isize> = input.iter().cloned().collect();
             let mut rng = StdRng::new().unwrap();
             let mut remove_list = input.clone();
             rng.shuffle(&mut remove_list);
@@ -686,7 +686,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_min(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             if let Some((m_removed, &v)) = m.delete_min() {
                 m_removed.len() == m.len() - 1 && Some(v) == input.into_iter().min()
@@ -699,7 +699,7 @@ mod quickcheck {
     quickcheck! {
         fn check_delete_max(xs: Vec<isize>) -> bool {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             if let Some((m_removed, &v)) = m.delete_max() {
                 m_removed.len() == m.len() - 1 && Some(v) == input.into_iter().max()
@@ -729,7 +729,7 @@ mod quickcheck {
         fn check_range(xs: Vec<isize>, min_bound: Bound<isize>, max_bound: Bound<isize>) -> bool
         {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -769,7 +769,7 @@ mod quickcheck {
                 -> bool
         {
             let input = filter_input(xs);
-            let m: Set<isize> = input.iter().cloned().collect();
+            let m: TreeSet<isize> = input.iter().cloned().collect();
 
             let min = match min_bound {
                 Bound::Unbounded => Bound::Unbounded,
@@ -812,8 +812,8 @@ mod quickcheck {
             let mut input1 = input0.clone();
             rng.shuffle(&mut input1);
 
-            let m0: Set<isize> = input0.into_iter().collect();
-            let m1: Set<isize> = input1.into_iter().collect();
+            let m0: TreeSet<isize> = input0.into_iter().collect();
+            let m1: TreeSet<isize> = input1.into_iter().collect();
 
             m0 == m1
         }
@@ -831,8 +831,8 @@ mod quickcheck {
             rng.shuffle(&mut input1);
             input1.pop();
 
-            let m0: Set<isize> = input0.into_iter().collect();
-            let m1: Set<isize> = input1.into_iter().collect();
+            let m0: TreeSet<isize> = input0.into_iter().collect();
+            let m1: TreeSet<isize> = input1.into_iter().collect();
 
             TestResult::from_bool(m0 != m1)
         }
@@ -847,8 +847,8 @@ mod quickcheck {
 
             intersection.sort();
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             let res: Vec<isize> = x_set.intersection(&y_set).cloned().collect();
 
@@ -870,8 +870,8 @@ mod quickcheck {
 
             union.sort();
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             let res: Vec<isize> = x_set.union(&y_set).cloned().collect();
 
@@ -888,8 +888,8 @@ mod quickcheck {
 
             difference.sort();
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             let res: Vec<isize> = x_set.difference(&y_set).cloned().collect();
 
@@ -917,8 +917,8 @@ mod quickcheck {
 
             symm_diff.sort();
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             let res: Vec<isize> = x_set.symmetric_difference(&y_set).cloned().collect();
 
@@ -933,8 +933,8 @@ mod quickcheck {
 
             let is_disjoint = xs.iter().all(|x| !ys.contains(x));
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             is_disjoint == x_set.is_disjoint(&y_set)
         }
@@ -947,8 +947,8 @@ mod quickcheck {
 
             let is_subset = xs.iter().all(|x| ys.contains(x));
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             is_subset == x_set.is_subset(&y_set)
         }
@@ -961,8 +961,8 @@ mod quickcheck {
 
             let is_superset = ys.iter().all(|y| xs.contains(y));
 
-            let x_set: Set<isize> = xs.into_iter().collect();
-            let y_set: Set<isize> = ys.into_iter().collect();
+            let x_set: TreeSet<isize> = xs.into_iter().collect();
+            let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             is_superset == x_set.is_superset(&y_set)
         }

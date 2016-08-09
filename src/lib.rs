@@ -11,8 +11,8 @@ pub mod set;
 pub mod map;
 mod tree;
 
-pub use set::Set;
-pub use map::Map;
+pub use set::TreeSet;
+pub use map::TreeMap;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
