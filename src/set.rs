@@ -390,3 +390,303 @@ mod test {
         assert!(a != b);
     }
 }
+
+#[cfg(test)]
+mod quickcheck {
+    use set::Set;
+    use Bound;
+
+    use quickcheck::TestResult;
+    use rand::{Rng, StdRng};
+
+    fn filter_input<V: PartialEq>(input: Vec<V>) -> Vec<V> {
+        let mut res: Vec<V> = Vec::new();
+
+        for v in input {
+            if res.iter().all(|x| x != &v) {
+                res.push(v);
+            }
+        }
+
+        res
+    }
+
+    quickcheck! {
+        fn check_length(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            m.len() == input.len()
+        }
+    }
+
+    quickcheck! {
+        fn check_is_empty(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            m.is_empty() == input.is_empty()
+        }
+    }
+
+    quickcheck! {
+        fn check_iter(xs: Vec<isize>) -> bool {
+            let mut input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            input.sort();
+
+            let collected: Vec<isize> = m.iter().cloned().collect();
+
+            collected == input
+        }
+    }
+
+    quickcheck! {
+        fn check_iter_size_hint(xs: Vec<isize>) -> bool {
+            let mut input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            input.sort();
+
+            let mut iter = m.iter();
+            let mut expected = m.len();
+
+            loop {
+                if iter.size_hint() != (expected, Some(expected)) {
+                    return false;
+                }
+
+                if iter.next().is_none() {
+                    return true;
+                }
+
+                expected -= 1;
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_rev_iter(xs: Vec<isize>) -> bool {
+            let mut input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            input.sort();
+            input.reverse();
+
+            let collected: Vec<isize> = m.rev_iter().cloned().collect();
+
+            collected == input
+        }
+    }
+
+    quickcheck! {
+        fn check_contains(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            input.into_iter().all(|v| m.contains(&v))
+        }
+    }
+
+    quickcheck! {
+        fn check_remove(xs: Vec<isize>) -> TestResult {
+            if xs.is_empty() {
+                return TestResult::discard();
+            }
+
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+            let mut rng = StdRng::new().unwrap();
+
+            let &v = rng.choose(&input).unwrap();
+
+            if let Some((m_removed, &removed)) = m.remove(&v) {
+                TestResult::from_bool(
+                    m_removed.len() == m.len() - 1 && removed == v
+                )
+            } else {
+                TestResult::failed()
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_remove_all(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let mut m: Set<isize> = input.iter().cloned().collect();
+            let mut rng = StdRng::new().unwrap();
+            let mut remove_list = input.clone();
+            rng.shuffle(&mut remove_list);
+
+            for v in remove_list {
+                let new_m = if let Some((m_removed, _)) = m.remove(&v) {
+                    m_removed
+                } else {
+                    return false;
+                };
+                m = new_m;
+                if m.contains(&v) {
+                    return false;
+                }
+            }
+
+            m.is_empty()
+        }
+    }
+
+    quickcheck! {
+        fn check_delete_min(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            if let Some((m_removed, &v)) = m.delete_min() {
+                m_removed.len() == m.len() - 1 && Some(v) == input.into_iter().min()
+            } else {
+                true
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_delete_max(xs: Vec<isize>) -> bool {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            if let Some((m_removed, &v)) = m.delete_max() {
+                m_removed.len() == m.len() - 1 && Some(v) == input.into_iter().max()
+            } else {
+                true
+            }
+        }
+    }
+
+    fn match_bound<T: Ord>(x: &T, min: &Bound<T>, max: &Bound<T>) -> bool {
+        let min_match = match *min {
+            Bound::Unbounded => true,
+            Bound::Included(ref lower) => lower <= x,
+            Bound::Excluded(ref lower) => lower < x
+        };
+
+        let max_match = match *max {
+            Bound::Unbounded => true,
+            Bound::Included(ref upper) => x <= upper,
+            Bound::Excluded(ref upper) => x < upper
+        };
+
+        min_match && max_match
+    }
+
+    quickcheck! {
+        fn check_range(xs: Vec<isize>, min_bound: Bound<isize>, max_bound: Bound<isize>) -> bool
+        {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            let min = match min_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let max = match max_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let res: Vec<isize> = m.range(min, max).cloned().collect();
+
+            for window in res.windows(2) {
+                if window[0] >= window[1] {
+                    return false;
+                }
+            }
+
+            for v in input {
+                let is_match = match_bound(&v, &min_bound, &max_bound);
+                let is_res = res.contains(&v);
+
+                if is_match != is_res {
+                    return false;
+                }
+            }
+
+            true
+        }
+    }
+
+    quickcheck! {
+        fn check_range_rev(xs: Vec<isize>, min_bound: Bound<isize>, max_bound: Bound<isize>)
+                -> bool
+        {
+            let input = filter_input(xs);
+            let m: Set<isize> = input.iter().cloned().collect();
+
+            let min = match min_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let max = match max_bound {
+                Bound::Unbounded => Bound::Unbounded,
+                Bound::Included(ref s) => Bound::Included(s),
+                Bound::Excluded(ref s) => Bound::Excluded(s),
+            };
+
+            let res: Vec<isize> = m.range(min, max).rev().cloned().collect();
+
+            for window in res.windows(2) {
+                if window[0] <= window[1] {
+                    return false;
+                }
+            }
+
+            for v in input {
+                let is_match = match_bound(&v, &min_bound, &max_bound);
+                let is_res = res.contains(&v);
+
+                if is_match != is_res {
+                    return false;
+                }
+            }
+
+            true
+        }
+    }
+
+    quickcheck! {
+        fn check_eq(xs: Vec<isize>) -> bool
+        {
+            let mut rng = StdRng::new().unwrap();
+            let input0 = filter_input(xs);
+            let mut input1 = input0.clone();
+            rng.shuffle(&mut input1);
+
+            let m0: Set<isize> = input0.into_iter().collect();
+            let m1: Set<isize> = input1.into_iter().collect();
+
+            m0 == m1
+        }
+    }
+
+    quickcheck! {
+        fn check_neq(xs: Vec<isize>) -> TestResult
+        {
+            if xs.is_empty() {
+                return TestResult::discard();
+            }
+            let mut rng = StdRng::new().unwrap();
+            let input0 = filter_input(xs);
+            let mut input1 = input0.clone();
+            rng.shuffle(&mut input1);
+            input1.pop();
+
+            let m0: Set<isize> = input0.into_iter().collect();
+            let m1: Set<isize> = input1.into_iter().collect();
+
+            TestResult::from_bool(m0 != m1)
+        }
+    }
+}
