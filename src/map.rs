@@ -294,6 +294,43 @@ impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
         )
     }
 
+    /// Find the map with given key, and if the key is found, udpate the value with the provided
+    /// function `f`, and return the new map. Returns `None` if the map already has the key.
+    ///
+    /// The function `f` receives the original value associated with the key, and returns
+    /// `Option<V>`. Remove the key-value if the return value is `None`, and update the value with
+    /// the new_value if the return value is `Some(new_value)`
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering on the borrowed
+    /// form must match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert("Two".to_string(), 2).insert("Three".to_string(), 3);
+    ///
+    /// // returns `None` because the key "One" is not in the map
+    /// assert_eq!(None, map.update("One", |v| Some(v+1)));
+    ///
+    /// let map_1 = map.update("Two", |v| Some(v+10)).unwrap();
+    /// // the value is updated
+    /// assert_eq!(Some(&12), map_1.get("Two"));
+    ///
+    /// let map_2 = map_1.update("Three", |_v| None).unwrap();
+    /// // the value is removed
+    /// assert_eq!(None, map_2.get("Three"))
+    /// ```
+    pub fn update<Q: ?Sized + Ord, F>(&self, key: &Q, f: F) -> Option<TreeMap<K, V>>
+        where K: Borrow<Q>, F: FnMut(&V) -> Option<V>
+    {
+        match tree::update(&self.root, key, f) {
+            Ok(root) => Some(TreeMap { root: root }),
+            Err(()) => None
+        }
+    }
+
     /// Remove the smallest key-value pair from the map, and returns the modified copy.
     ///
     /// Returns `None` if the original map was empty.
@@ -1007,6 +1044,39 @@ mod quickcheck {
             } else {
                 let res = m.insert_if_absent(key, value);
                 res.is_some() && res.unwrap().get(&key) == Some(&value)
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_update(xs: Vec<(char, isize)>, key: char) -> bool
+        {
+            let input = filter_input(xs);
+
+            let m: TreeMap<char, isize> = input.iter().cloned().collect();
+
+            match input.into_iter().find(|&(k, _)| k == key) {
+                Some((_, value)) => {
+                    let res = m.update(&key, |v| Some(v+1));
+                    res.is_some() && res.unwrap().get(&key) == Some(&(value+1))
+                },
+                None => m.update(&key, |v| Some(v+1)).is_none()
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_update_delete(xs: Vec<(char, isize)>, key: char) -> bool
+        {
+            let input = filter_input(xs);
+
+            let m: TreeMap<char, isize> = input.iter().cloned().collect();
+
+            if input.into_iter().any(|(k, _v)| k == key) {
+                let res = m.update(&key, |_v| None);
+                res.is_some() && res.unwrap().get(&key) == None
+            } else {
+                m.update(&key, |_v| None).is_none()
             }
         }
     }
