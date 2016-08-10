@@ -341,6 +341,30 @@ impl<V: Ord> TreeSet<V> where V: Clone {
         TreeSet { root: Some(Rc::new(root)) }
     }
 
+    /// Return a new copy of `TreeSet` with the value inserted.
+    ///
+    /// Returns `None` if the set already has the value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set = TreeSet::new().insert(2).insert(3);
+    ///
+    /// assert_eq!(None, set.insert_if_absent(2));
+    ///
+    /// let new_set = set.insert_if_absent(1).unwrap();
+    ///
+    /// assert_eq!(true, new_set.contains(&1));
+    /// ```
+    pub fn insert_if_absent(&self, value: V) -> Option<TreeSet<V>>
+    {
+        tree::insert_if_absent(&self.root, (value, ())).map(|root|
+            TreeSet { root: Some(Rc::new(root)) }
+        )
+    }
+
     /// Returns a new set with the smallest element removed from the set, and the smallest element.
     /// Returns `None` if the set was empty
     ///
@@ -1252,6 +1276,22 @@ mod quickcheck {
             let y_set: TreeSet<isize> = ys.into_iter().collect();
 
             is_superset == x_set.is_superset(&y_set)
+        }
+    }
+
+    quickcheck! {
+        fn check_insert_if_absent(xs: Vec<isize>, value: isize) -> bool
+        {
+            let input = filter_input(xs);
+
+            let s: TreeSet<isize> = input.iter().cloned().collect();
+
+            if input.iter().any(|&x| x == value) {
+                None == s.insert_if_absent(value)
+            } else {
+                let res = s.insert_if_absent(value);
+                res.is_some() && res.unwrap().contains(&value)
+            }
         }
     }
 }

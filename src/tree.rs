@@ -97,6 +97,29 @@ pub fn insert<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V)) -> TreeNode
     }
 }
 
+pub fn insert_if_absent<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V))
+        -> Option<TreeNode<K, V>>
+    where K: Clone + Ord, V: Clone
+{
+    match *node {
+        None => Some(TreeNode {
+            size: 1,
+            elem: elem,
+            left: None,
+            right: None
+        }),
+        Some(ref n) => match elem.0.cmp(&n.elem.0) {
+            Ordering::Less => insert_if_absent(&n.left, elem).map(|new_left|
+                balance_right_move(n.elem.clone(), new_left, &n.right)
+            ),
+            Ordering::Greater => insert_if_absent(&n.right, elem).map(|new_right|
+                balance_left_move(n.elem.clone(), &n.left, new_right)
+            ),
+            Ordering::Equal => None
+        }
+    }
+}
+
 pub fn remove<'r, Q: ?Sized + Ord, K, V>(node: &'r Option<Rc<TreeNode<K, V>>>, key: &Q)
         -> Option<(Option<Rc<TreeNode<K, V>>>, &'r (K, V))>
     where K: Clone + Ord + Borrow<Q>, V: Clone

@@ -270,6 +270,30 @@ impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
         TreeMap { root: Some(Rc::new(root)) }
     }
 
+    /// Return a new copy of `TreeMap` with the key-value pair inserted.
+    ///
+    /// Returns `None` if the map already has the key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(2, "Two").insert(3, "Three");
+    ///
+    /// assert_eq!(None, map.insert_if_absent(2, "Zwei"));
+    ///
+    /// let new_map = map.insert_if_absent(1, "One").unwrap();
+    ///
+    /// assert_eq!(Some(&"One"), new_map.get(&1));
+    /// ```
+    pub fn insert_if_absent(&self, key: K, value: V) -> Option<TreeMap<K, V>>
+    {
+        tree::insert_if_absent(&self.root, (key, value)).map(|root|
+            TreeMap { root: Some(Rc::new(root)) }
+        )
+    }
+
     /// Remove the smallest key-value pair from the map, and returns the modified copy.
     ///
     /// Returns `None` if the original map was empty.
@@ -968,6 +992,22 @@ mod quickcheck {
             let values: Vec<char> = m.values().cloned().collect();
 
             expected == values
+        }
+    }
+
+    quickcheck! {
+        fn check_insert_if_absent(xs: Vec<(isize, char)>, key: isize, value: char) -> bool
+        {
+            let input = filter_input(xs);
+
+            let m: TreeMap<isize, char> = input.iter().cloned().collect();
+
+            if input.iter().any(|&(k, _)| k == key) {
+                None == m.insert_if_absent(key, value)
+            } else {
+                let res = m.insert_if_absent(key, value);
+                res.is_some() && res.unwrap().get(&key) == Some(&value)
+            }
         }
     }
 }
