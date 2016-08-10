@@ -120,30 +120,39 @@ pub fn insert_if_absent<K, V>(node: &Option<Rc<TreeNode<K, V>>>, elem: (K, V))
     }
 }
 
-pub fn update<K, V, Q: ?Sized + Ord, F>(node: &Option<Rc<TreeNode<K, V>>>, key: &Q, mut f: F)
-        -> Result<Option<Rc<TreeNode<K, V>>>, ()>
-    where K: Borrow<Q> + Clone, V: Clone, F: FnMut(&V) -> Option<V>
+pub fn update<K, V, Q: ?Sized + Ord, F>(node: &TreeNode<K, V>, key: &Q, mut f: F)
+        -> Option<TreeNode<K, V>>
+    where K: Borrow<Q> + Clone, V: Clone, F: FnMut(&V) -> V
 {
-    if let Some(ref n) = *node {
-        match key.cmp(n.elem.0.borrow()) {
-            Ordering::Less => update(&n.left, key, f).map(|new_left|
-                Some(Rc::new(balance_left(n.elem.clone(), &new_left, &n.right)))
-            ),
-            Ordering::Greater => update(&n.right, key, f).map(|new_right|
-                Some(Rc::new(balance_right(n.elem.clone(), &n.left, &new_right)))
-            ),
-            Ordering::Equal => Ok(match f(&n.elem.1) {
-                None => glue(&n.left, &n.right),
-                Some(new_v) => Some(Rc::new(TreeNode {
-                    size: n.size,
-                    elem: (n.elem.0.clone(), new_v),
-                    left: n.left.clone(),
-                    right: n.right.clone()
-                }))
-            })
-        }
-    } else {
-        Err(())
+    match key.cmp(node.elem.0.borrow()) {
+        Ordering::Less => node.left.as_ref().and_then(|l|
+            update(l, key, f).map(|new_left|
+                TreeNode {
+                    size: node.size,
+                    elem: node.elem.clone(),
+                    left: Some(Rc::new(new_left)),
+                    right: node.right.clone()
+                }
+            )
+        ),
+        Ordering::Greater => node.right.as_ref().and_then(|r|
+            update(r, key, f).map(|new_right|
+                TreeNode {
+                    size: node.size,
+                    elem: node.elem.clone(),
+                    left: node.left.clone(),
+                    right: Some(Rc::new(new_right)),
+                }
+            )
+        ),
+        Ordering::Equal => Some(
+            TreeNode {
+                size: node.size,
+                elem: (node.elem.0.clone(), f(&node.elem.1)),
+                left: node.left.clone(),
+                right: node.right.clone()
+            }
+        )
     }
 }
 
