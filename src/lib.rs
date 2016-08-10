@@ -19,7 +19,9 @@ extern crate rand;
 #[cfg(test)]
 use quickcheck::{Arbitrary, Gen};
 
+/// An immutable set based on binary search tree
 pub mod set;
+/// An immutable map based on binary search tree
 pub mod map;
 mod tree;
 
