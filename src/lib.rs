@@ -1,3 +1,13 @@
+//! Immutable binary search tree.
+//!
+//! This crate provides functional programming style binary search trees which returns modified
+//! copy of original map or set with the new data, and preserves the original. Many features and
+//! algorithms are borrowed from `Data.Map` of Haskell's standard library.
+//!
+//! To share the data between the old and the new data structure after modification, most of the
+//! functions require the key and value type to implement `Clone`. If you want to store non-
+//! clonable data into this map, you can wrap it under shared pointer such as `Rc` or `Arc`.
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

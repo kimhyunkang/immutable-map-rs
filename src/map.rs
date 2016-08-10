@@ -439,13 +439,13 @@ impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
     /// let (new_map, pair) = map.remove(&2).unwrap();
     ///
     /// assert_eq!(None, new_map.get(&2));
-    /// assert_eq!((&2, &"Two"), pair);
+    /// assert_eq!(&"Two", pair);
     /// ```
-    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(TreeMap<K, V>, (&K, &V))>
+    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(TreeMap<K, V>, &V)>
         where K: Borrow<Q>
     {
         tree::remove(&self.root, key).map(|(new_root, v)|
-            (TreeMap { root: new_root }, (&v.0, &v.1))
+            (TreeMap { root: new_root }, &v.1)
         )
     }
 }
@@ -592,7 +592,7 @@ mod test {
         let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
-        assert_eq!((&7, &'g'), v);
+        assert_eq!(&'g', v);
     }
 
     #[test]
@@ -827,9 +827,9 @@ mod quickcheck {
 
             let &(k, v) = rng.choose(&input).unwrap();
 
-            if let Some((m_removed, removed_pair)) = m.remove(&k) {
+            if let Some((m_removed, removed_value)) = m.remove(&k) {
                 TestResult::from_bool(
-                    m_removed.len() == m.len() - 1 && removed_pair.1 == &v
+                    m_removed.len() == m.len() - 1 && removed_value == &v
                 )
             } else {
                 TestResult::failed()
