@@ -23,8 +23,7 @@ cargo doc
 
 git checkout gh-pages
 mv target/doc doc/v$VERSION
-rm doc/current
-cd doc && ln -s v$VERSION current && cd ..
+cp -R doc/v$VERSION/* doc
 
 git add doc
 git commit -m "Release v$VERSION"
