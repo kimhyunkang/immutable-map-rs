@@ -156,6 +156,36 @@ pub fn update<K, V, Q: ?Sized + Ord, F>(node: &TreeNode<K, V>, key: &Q, mut f: F
     }
 }
 
+pub fn insert_or_update<K, V, F>(node: &Option<Rc<TreeNode<K, V>>>, key: K, value: V, mut f: F)
+        -> TreeNode<K, V>
+    where K: Ord + Clone, V: Clone, F: FnMut(&V) -> V
+{
+    match *node {
+        None => TreeNode {
+            size: 1,
+            elem: (key, value),
+            left: None,
+            right: None
+        },
+        Some(ref n) => match key.cmp(&n.elem.0) {
+            Ordering::Less => {
+                let new_left = insert_or_update(&n.left, key, value, f);
+                balance_right_move(n.elem.clone(), new_left, &n.right)
+            },
+            Ordering::Greater => {
+                let new_right = insert_or_update(&n.right, key, value, f);
+                balance_left_move(n.elem.clone(), &n.left, new_right)
+            },
+            Ordering::Equal => TreeNode {
+                size: n.size,
+                elem: (n.elem.0.clone(), f(&n.elem.1)),
+                left: n.left.clone(),
+                right: n.right.clone()
+            }
+        }
+    }
+}
+
 pub fn remove<'r, Q: ?Sized + Ord, K, V>(node: &'r Option<Rc<TreeNode<K, V>>>, key: &Q)
         -> Option<(Option<Rc<TreeNode<K, V>>>, &'r (K, V))>
     where K: Clone + Ord + Borrow<Q>, V: Clone

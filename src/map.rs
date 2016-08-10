@@ -330,6 +330,31 @@ impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
         }
     }
 
+    /// Find the map with given key, and if the key is found, udpate the value with the provided
+    /// function `f`, and return the new map. If the key is not found, insert the key-value pair
+    /// to the map and return it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert("One", 1).insert("Three", 3);
+    ///
+    /// // The new pair ("Two", 2) is inserted
+    /// let map_1 = map.insert_or_update("Two", 2, |v| v + 10);
+    /// assert_eq!(Some(&2), map_1.get("Two"));
+    ///
+    /// // The ("Two", 2) pair is updated to ("Two", 2 + 10)
+    /// let map_2 = map_1.insert_or_update("Two", 2, |v| v + 10);
+    /// assert_eq!(Some(&12), map_2.get("Two"));
+    /// ```
+    pub fn insert_or_update<F>(&self, key: K, value: V, f: F) -> TreeMap<K, V>
+        where F: FnMut(&V) -> V
+    {
+        TreeMap { root: Some(Rc::new(tree::insert_or_update(&self.root, key, value, f))) }
+    }
+
     /// Remove the smallest key-value pair from the map, and returns the modified copy.
     ///
     /// Returns `None` if the original map was empty.
@@ -1060,6 +1085,25 @@ mod quickcheck {
                     res.is_some() && res.unwrap().get(&key) == Some(&(value+1))
                 },
                 None => m.update(&key, |v| v+1).is_none()
+            }
+        }
+    }
+
+    quickcheck! {
+        fn check_insert_or_update(xs: Vec<(char, isize)>, key: char) -> bool
+        {
+            let input = filter_input(xs);
+
+            let m: TreeMap<char, isize> = input.iter().cloned().collect();
+
+            let m1 = m.insert_or_update(key, 1, |v| v+1);
+            match input.into_iter().find(|&(k, _)| k == key) {
+                Some((_, value)) => {
+                    m1.get(&key) == Some(&(value+1))
+                },
+                None => {
+                    m1.get(&key) == Some(&1)
+                }
             }
         }
     }
