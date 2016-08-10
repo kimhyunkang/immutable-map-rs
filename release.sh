@@ -22,7 +22,7 @@ git commit -m "Release v$VERSION"
 cargo doc
 
 git checkout gh-pages
-mv target/doc/immutable_map doc/v$VERSION
+mv target/doc doc/v$VERSION
 rm doc/current
 cd doc && ln -s v$VERSION current && cd ..
 
