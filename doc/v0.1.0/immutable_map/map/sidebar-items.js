@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["TreeMap","An immutable key-value map based on weight-balanced binary tree. See https://yoichihirai.com/bst.pdf for the balancing algorithm."]],"type":[["TreeMapIter",""],["TreeMapRange",""],["TreeMapRevIter",""]]});

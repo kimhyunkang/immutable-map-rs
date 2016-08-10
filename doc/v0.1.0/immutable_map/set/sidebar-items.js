@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Difference",""],["Intersection",""],["SymmetricDifference",""],["TreeSet","An immutable set based on weight-balanced binary tree. See https://yoichihirai.com/bst.pdf for the balancing algorithm."],["Union",""]]});
