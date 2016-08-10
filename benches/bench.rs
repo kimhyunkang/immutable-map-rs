@@ -4,14 +4,14 @@ extern crate immutable_map;
 extern crate rand;
 extern crate test;
 
-use immutable_map::{Map, Set};
+use immutable_map::{TreeMap, TreeSet};
 use rand::{Rng, IsaacRng};
 use test::Bencher;
 
 #[bench]
 fn insert(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut map = Map::new();
+    let mut map = TreeMap::new();
     let mut v: usize = 0;
 
     b.iter(|| {
@@ -26,7 +26,7 @@ fn insert(b: &mut Bencher) {
 #[bench]
 fn get(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut map = Map::new();
+    let mut map = TreeMap::new();
     let mut v: usize = 0;
 
     for _ in 0 .. 10000 {
@@ -48,7 +48,7 @@ fn remove(b: &mut Bencher) {
 
     let mut rng = IsaacRng::new_unseeded();
     let mut inputs = Vec::new();
-    let mut map = Map::new();
+    let mut map = TreeMap::new();
     let mut v = 0usize;
 
     for _ in 0 .. input_size {
@@ -75,7 +75,7 @@ fn remove(b: &mut Bencher) {
 #[bench]
 fn iter_small(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut map = Map::new();
+    let mut map = TreeMap::new();
     let mut v: usize = 0;
 
     for _ in 0 .. 10 {
@@ -92,7 +92,7 @@ fn iter_small(b: &mut Bencher) {
 #[bench]
 fn iter_large(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut map = Map::new();
+    let mut map = TreeMap::new();
     let mut v: usize = 0;
 
     for _ in 0 .. 1000 {
@@ -109,7 +109,7 @@ fn iter_large(b: &mut Bencher) {
 #[bench]
 fn set_iter_small(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut set = Set::new();
+    let mut set = TreeSet::new();
 
     for _ in 0 .. 10 {
         let k = rng.gen::<u16>() as usize;
@@ -124,7 +124,7 @@ fn set_iter_small(b: &mut Bencher) {
 #[bench]
 fn set_iter_large(b: &mut Bencher) {
     let mut rng = IsaacRng::new_unseeded();
-    let mut set = Set::new();
+    let mut set = TreeSet::new();
 
     for _ in 0 .. 1000 {
         let k = rng.gen::<u16>() as usize;
