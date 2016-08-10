@@ -9,12 +9,121 @@ use tree;
 use tree::TreeNode;
 use Bound;
 
+/// An immutable set based on weight-balanced binary tree.
+/// See https://yoichihirai.com/bst.pdf for the balancing algorithm.
+///
+/// # Examples
+///
+/// ```
+/// use immutable_map::TreeSet;
+///
+/// let set_0 = TreeSet::new();
+///
+/// // `insert` returns new copies with the given key and value inserted, and does not change
+/// // the original map
+/// let set_1 = set_0.insert(3);
+/// let set_2 = set_1.insert(4);
+///
+/// assert!(!set_1.contains(&4));
+/// assert!(set_2.contains(&4));
+/// ```
 #[derive(Clone, Default)]
 pub struct TreeSet<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
 }
 
+impl<V> TreeSet<V> {
+    /// Makes a new empty TreeSet
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set = TreeSet::new();
+    /// let new_set = set.insert(1);
+    /// ```
+    pub fn new() -> TreeSet<V> {
+        TreeSet { root: None }
+    }
+
+    /// Returns the number of elements in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set = TreeSet::new().insert(1).insert(2);
+    /// assert_eq!(2, set.len());
+    /// ```
+    pub fn len(&self) -> usize {
+        tree::size(&self.root)
+    }
+
+    /// Returns true if the set contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let empty_set = TreeSet::new();
+    /// let new_set = empty_set.insert(1);
+    ///
+    /// assert!(empty_set.is_empty());
+    /// assert!(!new_set.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
+
+    /// Gets an iterator over the entries of the set, in sorted order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set = TreeSet::new().insert(2).insert(3).insert(1);
+    ///
+    /// for element in set.iter() {
+    ///     println!("{}", element);
+    /// }
+    ///
+    /// let first_value = set.iter().next().unwrap();
+    /// assert_eq!(1, *first_value);
+    /// ```
+    pub fn iter<'r>(&'r self) -> tree::Keys<tree::Iter<'r, V, ()>> {
+        tree::Keys::new(tree::Iter::new(&self.root))
+    }
+
+    /// Gets an iterator over the entries of the set, in decreasing order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set = TreeSet::new().insert(2).insert(3).insert(1);
+    ///
+    /// for element in set.rev_iter() {
+    ///     println!("{}", element);
+    /// }
+    ///
+    /// let first_value = set.rev_iter().next().unwrap();
+    /// assert_eq!(3, *first_value);
+    /// ```
+    pub fn rev_iter<'r>(&'r self) -> tree::Keys<tree::RevIter<'r, V, ()>> {
+        tree::Keys::new(tree::RevIter::new(&self.root))
+    }
+}
+
 impl<V: Ord> TreeSet<V> {
+    /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    ///
+    /// The value may be any borrowed form of the set's value type, but the ordering on the
+    /// borrowed form must match the ordering on the value type.
     pub fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<&V>
         where V: Borrow<Q>
     {
@@ -27,12 +136,48 @@ impl<V: Ord> TreeSet<V> {
         f(&self.root, key)
     }
 
+    /// Returns true if the value is in the set, if any, that is equal to the given value.
+    ///
+    /// The value may be any borrowed form of the set's value type, but the ordering on the
+    /// borrowed form must match the ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let set: TreeSet<String> = ["One".to_string(), "Two".to_string(), "Three".to_string()].iter().cloned().collect();
+    ///
+    /// assert_eq!(true, set.contains("Two"));
+    /// assert_eq!(false, set.contains("Four"));
+    /// ```
     pub fn contains<Q: Ord + ?Sized>(&self, key: &Q) -> bool
         where V: Borrow<Q>
     {
         self.get(key).is_some()
     }
 
+    /// Constructs a double-ended iterator over a sub-range of elements in the set, starting at
+    /// min, and ending at max. If min is Unbounded, then it will be treated as "negative
+    /// infinity", and if max is Unbounded, then it will be treated as "positive infinity". Thus
+    /// range(Unbounded, Unbounded) will yield the whole collection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    /// use immutable_map::Bound::*;
+    ///
+    /// let set = TreeSet::new().insert(8).insert(3).insert(5);
+    ///
+    /// for elem in set.range(Included(&4), Included(&8)) {
+    ///     println!("{}", elem);
+    /// }
+    ///
+    /// let values: Vec<_> = set.range(Included(&4), Included(&8)).cloned().collect();
+    ///
+    /// assert_eq!(values, [5, 8]);
+    /// ```
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
             -> tree::Keys<tree::Range<'r, V, ()>>
         where V: Borrow<Q>
@@ -40,6 +185,19 @@ impl<V: Ord> TreeSet<V> {
         tree::Keys::new(tree::Range::new(&self.root, min, max))
     }
 
+    /// Visits the values representing the intersection, in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let a = TreeSet::new().insert(1).insert(2);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    ///
+    /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
+    /// assert_eq!(intersection, [2]);
+    /// ```
     pub fn intersection<'r>(&'r self, other: &'r TreeSet<V>) -> Intersection<'r, V> {
         Intersection {
             a: tree::Iter::new(&self.root).peekable(),
@@ -47,6 +205,19 @@ impl<V: Ord> TreeSet<V> {
         }
     }
 
+    /// Visits the values representing the union, in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let a = TreeSet::new().insert(1).insert(2);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    ///
+    /// let union: Vec<_> = a.union(&b).cloned().collect();
+    /// assert_eq!(union, [1, 2, 3]);
+    /// ```
     pub fn union<'r>(&'r self, other: &'r TreeSet<V>) -> Union<'r, V> {
         Union {
             a: tree::Iter::new(&self.root).peekable(),
@@ -54,6 +225,19 @@ impl<V: Ord> TreeSet<V> {
         }
     }
 
+    /// Visits the values representing the difference of `self` and `other`, in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let a = TreeSet::new().insert(1).insert(2);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    ///
+    /// let difference: Vec<_> = a.difference(&b).cloned().collect();
+    /// assert_eq!(difference, [1]);
+    /// ```
     pub fn difference<'r>(&'r self, other: &'r TreeSet<V>) -> Difference<'r, V> {
         Difference {
             a: tree::Iter::new(&self.root).peekable(),
@@ -61,6 +245,19 @@ impl<V: Ord> TreeSet<V> {
         }
     }
 
+    /// Visits the values representing the symmetric difference, in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let a = TreeSet::new().insert(1).insert(2);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    ///
+    /// let symm_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
+    /// assert_eq!(symm_diff, [1, 3]);
+    /// ```
     pub fn symmetric_difference<'r>(&'r self, other: &'r TreeSet<V>) -> SymmetricDifference<'r, V> {
         SymmetricDifference {
             a: tree::Iter::new(&self.root).peekable(),
@@ -68,48 +265,99 @@ impl<V: Ord> TreeSet<V> {
         }
     }
 
+    /// Returns true if the set has no elements in common with other.
+    /// This is equivalent to checking for an empty intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let a = TreeSet::new().insert(1).insert(2);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    /// let c = TreeSet::new().insert(3).insert(4);
+    ///
+    /// assert_eq!(false, a.is_disjoint(&b));
+    /// assert_eq!(true, a.is_disjoint(&c));
+    /// ```
     pub fn is_disjoint(&self, other: &TreeSet<V>) -> bool {
         self.intersection(other).next().is_none()
     }
 
+    /// Returns true if `self` is a subset of `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let sup = TreeSet::new().insert(1).insert(2).insert(3);
+    /// let a = TreeSet::new().insert(2);
+    /// let b = TreeSet::new().insert(3).insert(4);
+    ///
+    /// assert_eq!(true, a.is_subset(&sup));
+    /// assert_eq!(false, b.is_subset(&sup));
+    /// ```
     pub fn is_subset(&self, other: &TreeSet<V>) -> bool {
         self.difference(other).next().is_none()
     }
 
+    /// Returns true if `self` is a superset of `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let sub = TreeSet::new().insert(1).insert(2);
+    /// let a = TreeSet::new().insert(1).insert(2).insert(3);
+    /// let b = TreeSet::new().insert(2).insert(3);
+    ///
+    /// assert_eq!(true, a.is_superset(&sub));
+    /// assert_eq!(false, b.is_superset(&sub));
+    /// ```
     pub fn is_superset(&self, other: &TreeSet<V>) -> bool {
         other.difference(self).next().is_none()
     }
 }
 
-impl<V> TreeSet<V> {
-    pub fn new() -> TreeSet<V> {
-        TreeSet { root: None }
-    }
-
-    pub fn len(&self) -> usize {
-        tree::size(&self.root)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.root.is_none()
-    }
-
-    pub fn iter<'r>(&'r self) -> tree::Keys<tree::Iter<'r, V, ()>> {
-        tree::Keys::new(tree::Iter::new(&self.root))
-    }
-
-    pub fn rev_iter<'r>(&'r self) -> tree::Keys<tree::RevIter<'r, V, ()>> {
-        tree::Keys::new(tree::RevIter::new(&self.root))
-    }
-}
-
 impl<V: Ord> TreeSet<V> where V: Clone {
+    /// Returns a new set with the value added to the set, replacing the existing value, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let empty_set = TreeSet::new();
+    /// let new_set = empty_set.insert(3);
+    ///
+    /// assert_eq!(false, empty_set.contains(&3));
+    /// assert_eq!(true, new_set.contains(&3));
+    /// ```
     pub fn insert(&self, value: V) -> TreeSet<V>
     {
         let root = tree::insert(&self.root, (value, ()));
         TreeSet { root: Some(Rc::new(root)) }
     }
 
+    /// Returns a new set with the smallest element removed from the set, and the smallest element.
+    /// Returns `None` if the set was empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let empty_set = TreeSet::new();
+    /// assert_eq!(None, empty_set.delete_min());
+    ///
+    /// let new_set = empty_set.insert(2).insert(3).insert(1);
+    /// let (set, removed) = new_set.delete_min().unwrap();
+    ///
+    /// assert_eq!(false, set.contains(&1));
+    /// assert_eq!(&1, removed);
+    /// ```
     pub fn delete_min(&self) -> Option<(TreeSet<V>, &V)>
     {
         if let Some(ref root) = self.root {
@@ -123,6 +371,23 @@ impl<V: Ord> TreeSet<V> where V: Clone {
         }
     }
 
+    /// Returns a new set with the largest element removed from the set, and the largest element.
+    /// Returns `None` if the set was empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let empty_set = TreeSet::new();
+    /// assert_eq!(None, empty_set.delete_max());
+    ///
+    /// let new_set = empty_set.insert(2).insert(3).insert(1);
+    /// let (set, removed) = new_set.delete_max().unwrap();
+    ///
+    /// assert_eq!(false, set.contains(&3));
+    /// assert_eq!(&3, removed);
+    /// ```
     pub fn delete_max(&self) -> Option<(TreeSet<V>, &V)>
     {
         if let Some(ref root) = self.root {
@@ -136,6 +401,28 @@ impl<V: Ord> TreeSet<V> where V: Clone {
         }
     }
 
+    /// Returns the new set with the value removed, and the removed value
+    ///
+    /// Returns `None` if the original set did not contain the value
+    ///
+    /// The value may be any borrowed form of the set's value type, but the ordering on the
+    /// borrowed form must match the ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeSet;
+    ///
+    /// let empty_set = TreeSet::new();
+    /// assert_eq!(None, empty_set.remove(&2));
+    ///
+    /// let set = empty_set.insert(2).insert(3).insert(1);
+    ///
+    /// let (new_set, removed) = set.remove(&2).unwrap();
+    ///
+    /// assert_eq!(false, new_set.contains(&2));
+    /// assert_eq!(&2, removed);
+    /// ```
     pub fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<(TreeSet<V>, &V)>
         where V: Borrow<Q>
     {

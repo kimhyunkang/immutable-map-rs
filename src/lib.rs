@@ -14,10 +14,14 @@ mod tree;
 pub use set::TreeSet;
 pub use map::TreeMap;
 
+/// An endpoint of a range of keys.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
+    /// An infinite endpoint. Indicates that there is no bound in this direction.
     Unbounded,
+    /// An inclusive bound.
     Included(T),
+    /// An exclusive bound.
     Excluded(T)
 }
 

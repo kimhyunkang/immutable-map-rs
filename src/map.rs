@@ -11,6 +11,26 @@ use Bound;
 use tree;
 use tree::TreeNode;
 
+/// An immutable key-value map based on weight-balanced binary tree.
+/// See https://yoichihirai.com/bst.pdf for the balancing algorithm.
+///
+/// # Examples
+///
+/// ```
+/// use immutable_map::TreeMap;
+///
+/// let map_0 = TreeMap::new();
+///
+/// // `insert` returns new copies with the given key and value inserted, and does not change
+/// // the original map
+/// let map_1 = map_0.insert(3, "Three");
+/// let map_2 = map_1.insert(4, "Four");
+///
+/// assert_eq!(false, map_1.contains_key(&4));
+/// assert_eq!(true, map_2.contains_key(&4));
+///
+/// assert_eq!("Four", map_2[&4]);
+/// ```
 #[derive(Clone, Default)]
 pub struct TreeMap<K, V> {
     root: Option<Rc<TreeNode<K, V>>>
@@ -20,7 +40,149 @@ pub type TreeMapIter<'r, K, V> = tree::Iter<'r, K, V>;
 pub type TreeMapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
 pub type TreeMapRange<'r, K, V> = tree::Range<'r, K, V>;
 
+impl<K, V> TreeMap<K, V> {
+    /// Makes a new empty TreeMap
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new();
+    /// let new_map = map.insert("One", 1);
+    /// ```
+    pub fn new() -> TreeMap<K, V> {
+        TreeMap { root: None }
+    }
+
+    /// Returns the number of elements in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(1, "One").insert(2, "Two");
+    /// assert_eq!(2, map.len());
+    /// ```
+    pub fn len(&self) -> usize {
+        tree::size(&self.root)
+    }
+
+    /// Returns true if the map contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let empty_map = TreeMap::new();
+    /// let new_map = empty_map.insert(1, "One");
+    ///
+    /// assert_eq!(true, empty_map.is_empty());
+    /// assert_eq!(false, new_map.is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
+
+    /// Gets an iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = map.iter().next().unwrap();
+    /// assert_eq!((1, "One"), (*first_key, *first_value));
+    /// ```
+    pub fn iter<'r>(&'r self) -> TreeMapIter<'r, K, V> {
+        tree::Iter::new(&self.root)
+    }
+
+    /// Gets an iterator over the entries of the map, sorted by key in decreasing order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// for (key, value) in map.rev_iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = map.rev_iter().next().unwrap();
+    /// assert_eq!((3, "Three"), (*first_key, *first_value));
+    /// ```
+    pub fn rev_iter<'r>(&'r self) -> TreeMapRevIter<'r, K, V> {
+        tree::RevIter::new(&self.root)
+    }
+
+    /// Gets an iterator over the keys of the map, in increasing order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// for key in map.keys() {
+    ///     println!("{}", key);
+    /// }
+    ///
+    /// let first_key = map.keys().next().unwrap();
+    /// assert_eq!(1, *first_key);
+    /// ```
+    pub fn keys<'r>(&'r self) -> tree::Keys<TreeMapIter<'r, K, V>> {
+        tree::Keys::new(tree::Iter::new(&self.root))
+    }
+
+    /// Gets an iterator over the values of the map, ordered by key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// for value in map.values() {
+    ///     println!("{}", value);
+    /// }
+    ///
+    /// let first_value = map.values().next().unwrap();
+    /// assert_eq!("One", *first_value);
+    /// ```
+    pub fn values<'r>(&'r self) -> tree::Values<TreeMapIter<'r, K, V>> {
+        tree::Values::new(tree::Iter::new(&self.root))
+    }
+}
+
 impl<K, V> TreeMap<K, V> where K: Ord {
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering on the borrowed
+    /// form must match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(1, "One");
+    ///
+    /// assert_eq!(map.get(&1), Some(&"One"));
+    /// assert_eq!(map.get(&2), None);
+    /// ```
     pub fn get<Q: ?Sized + Ord>(&self, key: &Q) -> Option<&V>
         where K: Borrow<Q>
     {
@@ -33,12 +195,48 @@ impl<K, V> TreeMap<K, V> where K: Ord {
         f(&self.root, key)
     }
 
+    /// Returns true if the map contains given key
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering on the borrowed
+    /// form must match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new().insert(1, "One");
+    ///
+    /// assert_eq!(true, map.contains_key(&1));
+    /// assert_eq!(false, map.contains_key(&2));
+    /// ```
     pub fn contains_key<Q: ?Sized + Ord>(&self, key: &Q) -> bool
         where K: Borrow<Q>
     {
         self.get(key).is_some()
     }
 
+    /// Constructs a double-ended iterator over a sub-range of elements in the map, starting at
+    /// min, and ending at max. If min is Unbounded, then it will be treated as "negative
+    /// infinity", and if max is Unbounded, then it will be treated as "positive infinity". Thus
+    /// range(Unbounded, Unbounded) will yield the whole collection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    /// use immutable_map::Bound::*;
+    ///
+    /// let map = TreeMap::new().insert(8, "Eight").insert(3, "Three").insert(5, "Five");
+    ///
+    /// for (key, value) in map.range(Included(&4), Included(&8)) {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let pairs: Vec<_> = map.range(Included(&4), Included(&8)).map(|(k, v)| (*k, *v)).collect();
+    ///
+    /// assert_eq!(pairs, [(5, "Five"), (8, "Eight")]);
+    /// ```
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>) -> TreeMapRange<'r, K, V>
         where K: Borrow<Q>
     {
@@ -46,74 +244,123 @@ impl<K, V> TreeMap<K, V> where K: Ord {
     }
 }
 
-impl<K, V> TreeMap<K, V> {
-    pub fn new() -> TreeMap<K, V> {
-        TreeMap { root: None }
-    }
-
-    pub fn len(&self) -> usize {
-        tree::size(&self.root)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.root.is_none()
-    }
-
-    pub fn iter<'r>(&'r self) -> TreeMapIter<'r, K, V> {
-        tree::Iter::new(&self.root)
-    }
-
-    pub fn rev_iter<'r>(&'r self) -> TreeMapRevIter<'r, K, V> {
-        tree::RevIter::new(&self.root)
-    }
-
-    pub fn keys<'r>(&'r self) -> tree::Keys<TreeMapIter<'r, K, V>> {
-        tree::Keys::new(tree::Iter::new(&self.root))
-    }
-
-    pub fn values<'r>(&'r self) -> tree::Values<TreeMapIter<'r, K, V>> {
-        tree::Values::new(tree::Iter::new(&self.root))
-    }
-}
-
 impl<K, V> TreeMap<K, V> where K: Clone + Ord, V: Clone {
+    /// Return a new copy of `TreeMap` with the key-value pair inserted
+    ///
+    /// If the map already has the key, the key-value pair is replaced in the new map
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let map = TreeMap::new();
+    ///
+    /// assert_eq!(false, map.contains_key(&1));
+    /// assert_eq!(None, map.get(&1));
+    ///
+    /// let new_map = map.insert(1, "One");
+    ///
+    /// assert_eq!(true, new_map.contains_key(&1));
+    /// assert_eq!(Some(&"One"), new_map.get(&1));
+    /// ```
     pub fn insert(&self, key: K, value: V) -> TreeMap<K, V>
     {
         let root = tree::insert(&self.root, (key, value));
         TreeMap { root: Some(Rc::new(root)) }
     }
 
-    pub fn delete_min(&self) -> Option<(TreeMap<K, V>, &(K, V))>
+    /// Remove the smallest key-value pair from the map, and returns the modified copy.
+    ///
+    /// Returns `None` if the original map was empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let empty_map = TreeMap::new();
+    /// assert_eq!(None, empty_map.delete_min());
+    ///
+    /// let map = empty_map.insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// let (new_map, pair) = map.delete_min().unwrap();
+    ///
+    /// assert_eq!(None, new_map.get(&1));
+    /// assert_eq!((&1, &"One"), pair);
+    /// ```
+    pub fn delete_min(&self) -> Option<(TreeMap<K, V>, (&K, &V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_min(&root);
             Some((
                 TreeMap { root: new_root },
-                v
+                (&v.0, &v.1)
             ))
         } else {
             None
         }
     }
 
-    pub fn delete_max(&self) -> Option<(TreeMap<K, V>, &(K, V))>
+    /// Remove the largest key-value pair from the map, and returns the modified copy.
+    ///
+    /// Returns `None` if the original map was empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let empty_map = TreeMap::new();
+    /// assert_eq!(None, empty_map.delete_max());
+    ///
+    /// let map = empty_map.insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// let (new_map, pair) = map.delete_max().unwrap();
+    ///
+    /// assert_eq!(None, new_map.get(&3));
+    /// assert_eq!((&3, &"Three"), pair);
+    /// ```
+    pub fn delete_max(&self) -> Option<(TreeMap<K, V>, (&K, &V))>
     {
         if let Some(ref root) = self.root {
             let (new_root, v) = tree::delete_max(&root);
             Some((
                 TreeMap { root: new_root },
-                v
+                (&v.0, &v.1)
             ))
         } else {
             None
         }
     }
 
-    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(TreeMap<K, V>, &(K, V))>
+    /// Remove the key from the map
+    ///
+    /// Returns `None` if the original map did not contain the key
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering on the borrowed
+    /// form must match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use immutable_map::TreeMap;
+    ///
+    /// let empty_map = TreeMap::new();
+    /// assert_eq!(None, empty_map.remove(&2));
+    ///
+    /// let map = empty_map.insert(2, "Two").insert(3, "Three").insert(1, "One");
+    ///
+    /// let (new_map, pair) = map.remove(&2).unwrap();
+    ///
+    /// assert_eq!(None, new_map.get(&2));
+    /// assert_eq!((&2, &"Two"), pair);
+    /// ```
+    pub fn remove<Q: ?Sized + Ord>(&self, key: &Q) -> Option<(TreeMap<K, V>, (&K, &V))>
         where K: Borrow<Q>
     {
         tree::remove(&self.root, key).map(|(new_root, v)|
-            (TreeMap { root: new_root }, v)
+            (TreeMap { root: new_root }, (&v.0, &v.1))
         )
     }
 }
@@ -224,7 +471,7 @@ mod test {
         let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
-        assert_eq!(&(3, 'c'), v);
+        assert_eq!((&3, &'c'), v);
     }
 
     #[test]
@@ -242,7 +489,7 @@ mod test {
         let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
-        assert_eq!(&(15, 'o'), v);
+        assert_eq!((&15, &'o'), v);
     }
 
     #[test]
@@ -260,7 +507,7 @@ mod test {
         let res: Vec<_> = r7.iter().map(|(&k, &v)| (k, v)).collect();
 
         assert_eq!(expected, res);
-        assert_eq!(&(7, 'g'), v);
+        assert_eq!((&7, &'g'), v);
     }
 
     #[test]
@@ -497,7 +744,7 @@ mod quickcheck {
 
             if let Some((m_removed, removed_pair)) = m.remove(&k) {
                 TestResult::from_bool(
-                    m_removed.len() == m.len() - 1 && removed_pair.1 == v
+                    m_removed.len() == m.len() - 1 && removed_pair.1 == &v
                 )
             } else {
                 TestResult::failed()
@@ -534,7 +781,7 @@ mod quickcheck {
             let input = filter_input(xs);
             let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
-            if let Some((m_removed, &(k, _))) = m.delete_min() {
+            if let Some((m_removed, (&k, _))) = m.delete_min() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().min().map(|pair| pair.0)
             } else {
                 true
@@ -547,7 +794,7 @@ mod quickcheck {
             let input = filter_input(xs);
             let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
-            if let Some((m_removed, &(k, _))) = m.delete_max() {
+            if let Some((m_removed, (&k, _))) = m.delete_max() {
                 m_removed.len() == m.len() - 1 && Some(k) == input.into_iter().max().map(|pair| pair.0)
             } else {
                 true
