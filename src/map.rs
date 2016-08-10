@@ -770,25 +770,11 @@ mod quickcheck {
 
     quickcheck! {
         fn check_iter_size_hint(xs: Vec<(isize, char)>) -> bool {
-            let mut input = filter_input(xs);
+            let input = filter_input(xs);
             let m: TreeMap<isize, char> = input.iter().cloned().collect();
 
-            input.sort();
-
-            let mut iter = m.iter();
-            let mut expected = m.len();
-
-            loop {
-                if iter.size_hint() != (expected, Some(expected)) {
-                    return false;
-                }
-
-                if iter.next().is_none() {
-                    return true;
-                }
-
-                expected -= 1;
-            }
+            let n = m.len();
+            m.iter().size_hint() == (n, Some(n))
         }
     }
 

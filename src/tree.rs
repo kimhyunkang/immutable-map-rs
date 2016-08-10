@@ -383,11 +383,7 @@ impl<'r, K: 'r, V: 'r> Iterator for Iter<'r, K, V> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let mut n = 0;
-        for node in &self.stack {
-            n += size(&node.right) + 1
-        }
-        (n, Some(n))
+        (self.size, Some(self.size))
     }
 }
 
