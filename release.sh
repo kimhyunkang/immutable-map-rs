@@ -24,7 +24,7 @@ cargo doc
 git checkout gh-pages
 mv target/doc/immutable_map doc/v$VERSION
 rm doc/current
-ln -s doc/v$VERSION/release
+cd doc && ln -s v$VERSION current && cd ..
 
 git add doc
 git commit -m "Release v$VERSION"
