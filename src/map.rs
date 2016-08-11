@@ -39,6 +39,8 @@ pub struct TreeMap<K, V> {
 pub type TreeMapIter<'r, K, V> = tree::Iter<'r, K, V>;
 pub type TreeMapRevIter<'r, K, V> = tree::RevIter<'r, K, V>;
 pub type TreeMapRange<'r, K, V> = tree::Range<'r, K, V>;
+pub type TreeMapKeys<'r, K, V> = tree::Keys<tree::Iter<'r, K, V>>;
+pub type TreeMapValues<'r, K, V> = tree::Values<tree::Iter<'r, K, V>>;
 
 impl<K, V> TreeMap<K, V> {
     /// Makes a new empty TreeMap
@@ -142,7 +144,7 @@ impl<K, V> TreeMap<K, V> {
     /// let first_key = map.keys().next().unwrap();
     /// assert_eq!(1, *first_key);
     /// ```
-    pub fn keys<'r>(&'r self) -> tree::Keys<TreeMapIter<'r, K, V>> {
+    pub fn keys<'r>(&'r self) -> TreeMapKeys<'r, K, V> {
         tree::Keys::new(tree::Iter::new(&self.root))
     }
 
@@ -162,7 +164,7 @@ impl<K, V> TreeMap<K, V> {
     /// let first_value = map.values().next().unwrap();
     /// assert_eq!("One", *first_value);
     /// ```
-    pub fn values<'r>(&'r self) -> tree::Values<TreeMapIter<'r, K, V>> {
+    pub fn values<'r>(&'r self) -> TreeMapValues<'r, K, V> {
         tree::Values::new(tree::Iter::new(&self.root))
     }
 }

@@ -32,6 +32,10 @@ pub struct TreeSet<V> {
     root: Option<Rc<TreeNode<V, ()>>>,
 }
 
+pub type TreeSetIter<'r, V> = tree::Keys<tree::Iter<'r, V, ()>>;
+pub type TreeSetRevIter<'r, V> = tree::Keys<tree::RevIter<'r, V, ()>>;
+pub type TreeSetRange<'r, V> = tree::Keys<tree::Range<'r, V, ()>>;
+
 impl<V> TreeSet<V> {
     /// Makes a new empty TreeSet
     ///
@@ -94,7 +98,7 @@ impl<V> TreeSet<V> {
     /// let first_value = set.iter().next().unwrap();
     /// assert_eq!(1, *first_value);
     /// ```
-    pub fn iter<'r>(&'r self) -> tree::Keys<tree::Iter<'r, V, ()>> {
+    pub fn iter<'r>(&'r self) -> TreeSetIter<'r, V> {
         tree::Keys::new(tree::Iter::new(&self.root))
     }
 
@@ -114,7 +118,7 @@ impl<V> TreeSet<V> {
     /// let first_value = set.rev_iter().next().unwrap();
     /// assert_eq!(3, *first_value);
     /// ```
-    pub fn rev_iter<'r>(&'r self) -> tree::Keys<tree::RevIter<'r, V, ()>> {
+    pub fn rev_iter<'r>(&'r self) -> TreeSetRevIter<'r, V> {
         tree::Keys::new(tree::RevIter::new(&self.root))
     }
 }
@@ -179,7 +183,7 @@ impl<V: Ord> TreeSet<V> {
     /// assert_eq!(values, [5, 8]);
     /// ```
     pub fn range<'r, Q: Ord>(&'r self, min: Bound<&Q>, max: Bound<&Q>)
-            -> tree::Keys<tree::Range<'r, V, ()>>
+            -> TreeSetRange<'r, V>
         where V: Borrow<Q>
     {
         tree::Keys::new(tree::Range::new(&self.root, min, max))
